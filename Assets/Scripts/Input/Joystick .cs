@@ -176,7 +176,7 @@ public class Joystick : MonoBehaviour
     public bool UpdateInput()
     {
         int count = 0;
-#if UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
         if (Input.GetMouseButton(0))
             count = 1;
 #else
@@ -199,7 +199,7 @@ public class Joystick : MonoBehaviour
                 Vector2 touchPos = Vector2.zero;
                 for (int i = 0; i < count; i++)
                 {
-#if UNITY_EDITOR
+#if UNITY_STANDALONE_WIN ||UNITY_EDITOR
                     if (i == 0)
                     {
                         touchPos.x = Input.mousePosition.x;
@@ -276,7 +276,7 @@ public class Joystick : MonoBehaviour
 
                 for (int i = 0; i < count; i++)
                 {
-#if UNITY_EDITOR
+#if UNITY_STANDALONE_WIN ||UNITY_EDITOR
                     if (i == 0)
                     {
                         touchPos.x = Input.mousePosition.x;

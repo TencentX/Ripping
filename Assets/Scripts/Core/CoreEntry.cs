@@ -220,7 +220,7 @@ public class CoreEntry : MonoBehaviour
         // 设置手机不睡眠
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
-#if UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
         m_screenWidth = Screen.width;
         m_screenHeight = Screen.height;
 #else

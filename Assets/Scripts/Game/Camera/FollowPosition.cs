@@ -23,6 +23,22 @@ public class FollowPosition : MonoBehaviour
 	    thisTransform = transform;
     }
 
+	void Update()
+	{
+		if (targetTransform == null)
+		{
+			TestController[] controllers = GameObject.FindObjectsOfType<TestController>();
+			foreach (TestController controller in controllers)
+			{
+				if (controller.isLocalPlayer)
+				{
+					targetTransform = controller.transform;
+					break;
+				}
+			}
+		}
+	}
+
 	void LateUpdate() 
 	{
 		if (targetTransform != null)

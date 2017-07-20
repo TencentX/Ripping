@@ -136,7 +136,7 @@ public class InputBase : MonoBehaviour
 
     void UpdateTouch()
     {
-#if UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
         if (Input.GetMouseButton(0))
         {
             currentTouchCount = 1;

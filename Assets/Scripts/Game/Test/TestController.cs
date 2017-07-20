@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.Networking;
 
-public class TestController : MonoBehaviour
+public class TestController : NetworkBehaviour
 {
 	[Tooltip("移动速度")]
 	public float moveSpeed = 1.0f;
@@ -20,6 +21,14 @@ public class TestController : MonoBehaviour
 	// 目标朝向
 	private Quaternion targetRotation;
 
+	// 输入
+	[SyncVar]
+	private Vector3 inputDir = Vector3.zero;
+	[SyncVar]
+	private bool inputStop = true;
+	[SyncVar]
+	private bool inputCatch = false;
+
 	void Awake()
 	{
 		controller = GetComponent<CharacterController>();
@@ -36,34 +45,105 @@ public class TestController : MonoBehaviour
 
 	void Start()
 	{
-		EventMgr.instance.TriggerEvent("beginProcessInput");
-		EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
-		EventMgr.instance.AddListener("joystickStop", OnStop);
-		EventMgr.instance.AddListener("jumpPress", OnJumpPress);
+		if (isLocalPlayer)
+		{
+			EventMgr.instance.TriggerEvent("beginProcessInput");
+			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
+			EventMgr.instance.AddListener("joystickStop", OnStop);
+			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
+		}
 	}
 
 	void FixedUpdate()
 	{
-		thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
-	}
-
-	private void OnMove(string gameEvent, Vector3 dir)
-	{
-		if (true)
+		if (!inputStop)
 		{
-			if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
-				stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
-			FaceToDir(dir);
-			controller.Move(dir * moveSpeed * Time.deltaTime);
+			thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
+			if (true)
+			{
+				if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
+					stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
+				if (hasAuthority)
+				{
+					// 有数据权限才设置位置和朝向
+					FaceToDir(inputDir);
+					controller.Move(inputDir * moveSpeed * Time.deltaTime);
+				}
+			}
+//			else
+//			{
+//				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
+//				FaceToDir(dir);
+//				controller.Move(dir * runSpeed * Time.deltaTime);
+//			}
 		}
-//		else
-//		{
-//			stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
-//			FaceToDir(dir);
-//			controller.Move(dir * runSpeed * Time.deltaTime);
-//		}
+		else
+		{
+			if (inputCatch)
+			{
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
+			}
+			else
+			{
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+			}
+		}
 	}
 
+	#region command
+	[Command]
+	void CmdMove(Vector3 dir)
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController controller = go.GetComponent<TestController>();
+			controller.InjectMove(dir);
+		}
+	}
+
+	[Command]
+	void CmdStop()
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController controller = go.GetComponent<TestController>();
+			controller.InjectStop();
+		}
+	}
+
+	[Command]
+	void CmdCatch()
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController controller = go.GetComponent<TestController>();
+			controller.InjectCatch();
+		}
+	}
+	#endregion
+
+	#region input
+	void InjectMove(Vector3 dir)
+	{
+		inputStop = false;
+		inputDir = dir;
+	}
+
+	void InjectStop()
+	{
+		inputStop = true;
+	}
+
+	void InjectCatch()
+	{
+		inputCatch = true;
+	}
+	#endregion
+
+	#region local method
 	private void FaceToDir(Vector3 dir)
 	{
 		dir.y = 0.0f;
@@ -71,15 +151,37 @@ public class TestController : MonoBehaviour
 		targetRotation = Quaternion.LookRotation(dir);
 	}
 
+	private void OnMove(string gameEvent, Vector3 dir)
+	{
+		if (hasAuthority)
+		{
+			// 有数据权限，直接移动
+			InjectMove(dir);
+		}
+		else
+		{
+			// 无数据权限，发送数据
+			CmdMove(dir);
+		}
+	}
+
 	private void OnStop(string gameEvent)
 	{
-		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+		if (hasAuthority)
+			InjectStop();
+		else
+			CmdStop();
 	}
 
 	private void OnJumpPress(string gameEvent)
 	{
-		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
+		InjectCatch();
+		if (hasAuthority)
+			InjectCatch();
+		else
+			CmdCatch();
 	}
+	#endregion
 
 	#region 玩家状态
 	private void EnterIdle()
@@ -101,7 +203,7 @@ public class TestController : MonoBehaviour
 	{
 		animate.Play("out");
 		Scheduler.Create(this, (sche, t, s) => {
-			stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+			inputCatch = false;
 		}, 0f, 0f, 1f);
 	}
 	#endregion 玩家状态
