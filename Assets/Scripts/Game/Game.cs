@@ -18,11 +18,18 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public InputField input;
 
+	/// <summary>
+	/// 蹦跑按钮
+	/// </summary>
+	public Button runBtn;
+
 	void Start()
 	{
 		DontDestroyOnLoad(gameObject);
 		foreach (Transform pos in bornPoses)
 			NetworkManager.RegisterStartPosition(pos);
+		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
+		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
 	}
 
 	void OnDestroy()
@@ -46,5 +53,17 @@ public class Game : MonoBehaviour
 	{
 		NetworkManager.singleton.networkAddress = input.text;
 		NetworkManager.singleton.StartClient();
+	}
+
+	/// <summary>
+	/// 奔跑
+	/// </summary>
+	public void OnDownRun(GameObject go)
+	{
+		EventMgr.instance.TriggerEvent<bool>("runPress", true);
+	}
+	public void OnUpRun(GameObject go)
+	{
+		EventMgr.instance.TriggerEvent<bool>("runPress", false);
 	}
 }

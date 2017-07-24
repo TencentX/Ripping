@@ -28,6 +28,8 @@ public class TestController : NetworkBehaviour
 	private bool inputStop = true;
 	[SyncVar]
 	private bool inputCatch = false;
+	[SyncVar]
+	private bool inputRun = false;
 
 	void Awake()
 	{
@@ -41,6 +43,7 @@ public class TestController : NetworkBehaviour
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Catch, EnterCatch);
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		targetRotation = thisTransform.rotation;
+		inputDir = thisTransform.forward;
 	}
 
 	void Start()
@@ -51,6 +54,7 @@ public class TestController : NetworkBehaviour
 			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
 			EventMgr.instance.AddListener("joystickStop", OnStop);
 			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
+			EventMgr.instance.AddListener<bool>("runPress", OnRunPress);
 		}
 	}
 
@@ -59,7 +63,7 @@ public class TestController : NetworkBehaviour
 		if (!inputStop)
 		{
 			thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
-			if (true)
+			if (!inputRun)
 			{
 				if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
 					stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
@@ -70,12 +74,16 @@ public class TestController : NetworkBehaviour
 					controller.Move(inputDir * moveSpeed * Time.deltaTime);
 				}
 			}
-//			else
-//			{
-//				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
-//				FaceToDir(dir);
-//				controller.Move(dir * runSpeed * Time.deltaTime);
-//			}
+			else
+			{
+				if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
+					stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
+				if (hasAuthority)
+				{
+					FaceToDir(inputDir);
+					controller.Move(inputDir * runSpeed * Time.deltaTime);
+				}
+			}
 		}
 		else
 		{
@@ -123,6 +131,17 @@ public class TestController : NetworkBehaviour
 			controller.InjectCatch();
 		}
 	}
+
+	[Command]
+	void CmdRun(bool pressed)
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController controller = go.GetComponent<TestController>();
+			controller.InjectRun(pressed);
+		}
+	}
 	#endregion
 
 	#region input
@@ -140,6 +159,12 @@ public class TestController : NetworkBehaviour
 	void InjectCatch()
 	{
 		inputCatch = true;
+	}
+
+	void InjectRun(bool value)
+	{
+		inputStop = !value;
+		inputRun = value;
 	}
 	#endregion
 
@@ -175,11 +200,18 @@ public class TestController : NetworkBehaviour
 
 	private void OnJumpPress(string gameEvent)
 	{
-		InjectCatch();
 		if (hasAuthority)
 			InjectCatch();
 		else
 			CmdCatch();
+	}
+
+	private void OnRunPress(string gameEvent, bool pressed)
+	{
+		if (hasAuthority)
+			InjectRun(pressed);
+		else
+			CmdRun(pressed);
 	}
 	#endregion
 
