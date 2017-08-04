@@ -75,8 +75,10 @@
 		// 第二次绘制，显示未被遮挡的部分
         Pass    
         {    
+        	Tags { "LightMode"="ForwardAdd" }
             ZWrite On  
             ZTest Less   
+            Blend SrcAlpha OneMinusSrcAlpha 
   
             CGPROGRAM    
             #pragma vertex vert    

@@ -16,6 +16,7 @@ public class TestController : NetworkBehaviour
 	CharacterController controller;
 	PlayerStateMachine stateMachine;
 	Animation animate;
+	Light sight;
 	Transform thisTransform;
 
 	// 目标朝向
@@ -36,6 +37,7 @@ public class TestController : NetworkBehaviour
 		controller = GetComponent<CharacterController>();
 		stateMachine = GetComponent<PlayerStateMachine>();
 		animate = GetComponentInChildren<Animation>();
+		sight = GetComponentInChildren<Light>();
 		thisTransform = transform;
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Idle, EnterIdle);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Move, EnterMove);
@@ -50,11 +52,16 @@ public class TestController : NetworkBehaviour
 	{
 		if (isLocalPlayer)
 		{
+			sight.enabled = true;
 			EventMgr.instance.TriggerEvent("beginProcessInput");
 			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
 			EventMgr.instance.AddListener("joystickStop", OnStop);
 			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
 			EventMgr.instance.AddListener<bool>("runPress", OnRunPress);
+		}
+		else
+		{
+			sight.enabled = false;
 		}
 	}
 
