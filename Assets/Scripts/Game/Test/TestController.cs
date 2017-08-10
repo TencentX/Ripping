@@ -67,13 +67,16 @@ public class TestController : NetworkBehaviour
 
 	void FixedUpdate()
 	{
-		if (!inputStop)
+		if (inputCatch)
+		{
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
+		}
+		else if (!inputStop)
 		{
 			thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 			if (!inputRun)
 			{
-				if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
-					stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
 				if (hasAuthority)
 				{
 					// 有数据权限才设置位置和朝向
@@ -83,8 +86,7 @@ public class TestController : NetworkBehaviour
 			}
 			else
 			{
-				if (stateMachine.playerState != PlayerStateMachine.PlayerState.Catch)
-					stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
 				if (hasAuthority)
 				{
 					FaceToDir(inputDir);

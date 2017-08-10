@@ -66,4 +66,12 @@ public class Game : MonoBehaviour
 	{
 		EventMgr.instance.TriggerEvent<bool>("runPress", false);
 	}
+
+	/// <summary>
+	/// 撕名牌
+	/// </summary>
+	public void OnCatch()
+	{
+		EventMgr.instance.TriggerEvent("jumpPress");
+	}
 }
