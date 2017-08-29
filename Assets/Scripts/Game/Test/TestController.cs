@@ -13,6 +13,12 @@ public class TestController : NetworkBehaviour
 	[Tooltip("旋转速度，每帧旋转的度数")]
 	public float rotateSpeed = 2f;
 
+	[Tooltip("撕扯距离")]
+	public float catchDistance = 1.0f;
+
+	[Tooltip("撕扯角度")]
+	public float catchDegree = 80.0f;
+
 	CharacterController controller;
 	PlayerStateMachine stateMachine;
 	Animation animate;
@@ -31,6 +37,8 @@ public class TestController : NetworkBehaviour
 	private bool inputCatch = false;
 	[SyncVar]
 	private bool inputRun = false;
+	[SyncVar]
+	private bool outputCaught = false;
 
 	void Awake()
 	{
@@ -43,6 +51,7 @@ public class TestController : NetworkBehaviour
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Move, EnterMove);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Run, EnterRun);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Catch, EnterCatch);
+		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Caught, EnterCaught);
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		targetRotation = thisTransform.rotation;
 		inputDir = thisTransform.forward;
@@ -63,16 +72,25 @@ public class TestController : NetworkBehaviour
 		{
 			sight.enabled = false;
 		}
+		if (hasAuthority)
+			RipMgr.instance.AddTarget(gameObject, 0.5f);
 	}
 
 	void FixedUpdate()
 	{
-		if (inputCatch)
+		if (outputCaught)
 		{
+			// 被抓
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Caught);
+		}
+		else if (inputCatch)
+		{
+			// 抓人
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 		}
 		else if (!inputStop)
 		{
+			// 正在移动
 			thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 			if (!inputRun)
 			{
@@ -96,6 +114,7 @@ public class TestController : NetworkBehaviour
 		}
 		else
 		{
+			// 停止移动
 			if (inputCatch)
 			{
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
@@ -168,6 +187,13 @@ public class TestController : NetworkBehaviour
 	void InjectCatch()
 	{
 		inputCatch = true;
+		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
+		GameObject ripTarget = null;
+		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, ref ripTarget))
+		{
+			TestController controller = ripTarget.GetComponent<TestController>();
+			controller.outputCaught = true;
+		}
 	}
 
 	void InjectRun(bool value)
@@ -245,6 +271,14 @@ public class TestController : NetworkBehaviour
 		animate.Play("out");
 		Scheduler.Create(this, (sche, t, s) => {
 			inputCatch = false;
+		}, 0f, 0f, 1f);
+	}
+
+	private void EnterCaught()
+	{
+		animate.Play("cry");
+		Scheduler.Create(this, (sche, t, s) => {
+			outputCaught = false;
 		}, 0f, 0f, 1f);
 	}
 	#endregion 玩家状态

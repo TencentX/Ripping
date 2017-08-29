@@ -14,6 +14,12 @@ public class Game : MonoBehaviour
 	public Transform[] bornPoses;
 
 	/// <summary>
+	/// 房间按钮
+	/// </summary>
+	public Button host;
+	public Button client;
+
+	/// <summary>
 	/// ip输入框
 	/// </summary>
 	public InputField input;
@@ -30,12 +36,28 @@ public class Game : MonoBehaviour
 			NetworkManager.RegisterStartPosition(pos);
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
+		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
+		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
 	}
 
 	void OnDestroy()
 	{
 		foreach (Transform pos in bornPoses)
-			NetworkManager.UnRegisterStartPosition(pos);
+			NetManager.UnRegisterStartPosition(pos);
+	}
+
+	private void OnClientConnect(string gameEvent)
+	{
+		host.gameObject.SetActive(false);
+		client.gameObject.SetActive(false);
+		input.gameObject.SetActive(false);
+	}
+
+	private void OnClientDisconnect(string gameEvent)
+	{
+		host.gameObject.SetActive(true);
+		client.gameObject.SetActive(true);
+		input.gameObject.SetActive(true);
 	}
 
 	/// <summary>
@@ -43,7 +65,7 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public void OnClickHost()
 	{
-		NetworkManager.singleton.StartHost();
+		NetManager.singleton.StartHost();
 	}
 
 	/// <summary>
@@ -51,8 +73,8 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public void OnClickClient()
 	{
-		NetworkManager.singleton.networkAddress = input.text;
-		NetworkManager.singleton.StartClient();
+		NetManager.singleton.networkAddress = input.text;
+		NetManager.singleton.StartClient();
 	}
 
 	/// <summary>
