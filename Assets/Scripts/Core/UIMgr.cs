@@ -388,6 +388,14 @@ public class UIMgr : Singleton<UIMgr>
         return null;
     }
 
+	public PanelBase GetOrCreatePanel(string panelName)
+	{
+		var panel = GetPanelBase(panelName);
+		if (panel == null)
+			panel = CreatePanel(panelName);
+		return panel;
+	}
+
     public void ClearPanels()
     {
         List<string> _allPanelName = new List<string>();

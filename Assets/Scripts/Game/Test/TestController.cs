@@ -23,6 +23,7 @@ public class TestController : NetworkBehaviour
 	PlayerStateMachine stateMachine;
 	Animation animate;
 	Light sight;
+	GameObject model;
 	Transform thisTransform;
 
 	// 目标朝向
@@ -38,6 +39,8 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	private bool inputRun = false;
 	[SyncVar]
+	private bool inputHide = false;
+	[SyncVar]
 	private bool outputCaught = false;
 
 	void Awake()
@@ -46,6 +49,7 @@ public class TestController : NetworkBehaviour
 		stateMachine = GetComponent<PlayerStateMachine>();
 		animate = GetComponentInChildren<Animation>();
 		sight = GetComponentInChildren<Light>();
+		model = transform.Find("Actormodel").gameObject;
 		thisTransform = transform;
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Idle, EnterIdle);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Move, EnterMove);
@@ -67,6 +71,8 @@ public class TestController : NetworkBehaviour
 			EventMgr.instance.AddListener("joystickStop", OnStop);
 			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
 			EventMgr.instance.AddListener<bool>("runPress", OnRunPress);
+			EventMgr.instance.AddListener<GameObject>("OnSignPress", OnSingPress);
+			EventMgr.instance.AddListener("outPress", OnOutPress);
 		}
 		else
 		{
@@ -78,7 +84,15 @@ public class TestController : NetworkBehaviour
 
 	void FixedUpdate()
 	{
-		if (outputCaught)
+		if (inputHide)
+		{
+			// 躲藏
+			if (hasAuthority)
+			{
+				thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
+			}
+		}
+		else if (outputCaught)
 		{
 			// 被抓
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Caught);
@@ -91,14 +105,13 @@ public class TestController : NetworkBehaviour
 		else if (!inputStop)
 		{
 			// 正在移动
-			thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 			if (!inputRun)
 			{
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
 				if (hasAuthority)
 				{
 					// 有数据权限才设置位置和朝向
-					FaceToDir(inputDir);
+					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 					controller.Move(inputDir * moveSpeed * Time.deltaTime);
 				}
 			}
@@ -107,7 +120,7 @@ public class TestController : NetworkBehaviour
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
 				if (hasAuthority)
 				{
-					FaceToDir(inputDir);
+					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 					controller.Move(inputDir * runSpeed * Time.deltaTime);
 				}
 			}
@@ -170,6 +183,17 @@ public class TestController : NetworkBehaviour
 			controller.InjectRun(pressed);
 		}
 	}
+
+	[Command]
+	void CmdHide(bool hide, Vector3 hidePos)
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController controller = go.GetComponent<TestController>();
+			controller.InjectHide(hide, hidePos);
+		}
+	}
 	#endregion
 
 	#region input
@@ -177,6 +201,7 @@ public class TestController : NetworkBehaviour
 	{
 		inputStop = false;
 		inputDir = dir;
+		FaceToDir(inputDir);
 	}
 
 	void InjectStop()
@@ -200,6 +225,22 @@ public class TestController : NetworkBehaviour
 	{
 		inputStop = !value;
 		inputRun = value;
+	}
+
+	void InjectHide(bool value, Vector3 hidePos)
+	{
+		if (inputHide == value)
+			return;
+		inputHide = value;
+		if (inputHide)
+		{
+			gameObject.transform.position = hidePos;
+		}
+		else
+		{
+			gameObject.transform.position += gameObject.transform.forward * 1;
+		}
+		model.SetActive(!inputHide);
 	}
 	#endregion
 
@@ -247,6 +288,22 @@ public class TestController : NetworkBehaviour
 			InjectRun(pressed);
 		else
 			CmdRun(pressed);
+	}
+
+	private void OnSingPress(string gameEvent, GameObject go)
+	{
+		if (hasAuthority)
+			InjectHide(true, go.transform.position);
+		else
+			CmdHide(true, go.transform.position);
+	}
+
+	private void OnOutPress(string gameEvent)
+	{
+		if (hasAuthority)
+			InjectHide(false, transform.position);
+		else
+			CmdHide(false, transform.position);
 	}
 	#endregion
 

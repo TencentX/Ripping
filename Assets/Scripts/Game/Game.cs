@@ -96,4 +96,9 @@ public class Game : MonoBehaviour
 	{
 		EventMgr.instance.TriggerEvent("jumpPress");
 	}
+
+	public void OnOutBox()
+	{
+		EventMgr.instance.TriggerEvent("outPress");
+	}
 }
