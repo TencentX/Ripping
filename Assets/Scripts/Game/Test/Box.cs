@@ -7,6 +7,14 @@ using UnityEngine.Networking;
 /// </summary>
 public class Box : MonoBehaviour
 {
+	/// <summary>
+	/// 箱子id
+	/// </summary>
+	public int id;
+
+	// 隐藏的玩家
+	private TestController player;
+
 	public void OnTriggerEnter(Collider collider)
 	{
 		if (!collider.tag.Equals("Player"))
@@ -29,5 +37,15 @@ public class Box : MonoBehaviour
 		GameObject panel = UIMgr.instance.GetPanel("p_ui_sign_panel");
 		if (panel != null)
 			panel.SetActive(false);
+	}
+
+	public void SetHider(TestController player)
+	{
+		this.player = player;
+	}
+
+	public TestController GetHider()
+	{
+		return player;
 	}
 }

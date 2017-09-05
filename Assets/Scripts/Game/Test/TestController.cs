@@ -10,6 +10,9 @@ public class TestController : NetworkBehaviour
 	[Tooltip("奔跑速度")]
 	public float runSpeed = 2.0f;
 
+	[Tooltip("身体半径，撕扯检测用")]
+	public float bodyRadius = 0.5f;
+
 	[Tooltip("旋转速度，每帧旋转的度数")]
 	public float rotateSpeed = 2f;
 
@@ -38,8 +41,13 @@ public class TestController : NetworkBehaviour
 	private bool inputCatch = false;
 	[SyncVar]
 	private bool inputRun = false;
-	[SyncVar]
-	private bool inputHide = false;
+	struct HideInfo
+	{
+		public bool hide;
+		public int id;
+	}
+	[SyncVar(hook = "OnHide")]
+	private HideInfo hideInfo;
 	[SyncVar]
 	private bool outputCaught = false;
 
@@ -71,20 +79,20 @@ public class TestController : NetworkBehaviour
 			EventMgr.instance.AddListener("joystickStop", OnStop);
 			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
 			EventMgr.instance.AddListener<bool>("runPress", OnRunPress);
-			EventMgr.instance.AddListener<GameObject>("OnSignPress", OnSingPress);
-			EventMgr.instance.AddListener("outPress", OnOutPress);
+			EventMgr.instance.AddListener<GameObject>("OnSignPress", OnSignPress);
+			EventMgr.instance.AddListener("boxPress", OnBoxPress);
 		}
 		else
 		{
 			sight.enabled = false;
 		}
 		if (hasAuthority)
-			RipMgr.instance.AddTarget(gameObject, 0.5f);
+			RipMgr.instance.AddTarget(gameObject, bodyRadius);
 	}
 
 	void FixedUpdate()
 	{
-		if (inputHide)
+		if (hideInfo.hide)
 		{
 			// 躲藏
 			if (hasAuthority)
@@ -110,7 +118,6 @@ public class TestController : NetworkBehaviour
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
 				if (hasAuthority)
 				{
-					// 有数据权限才设置位置和朝向
 					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 					controller.Move(inputDir * moveSpeed * Time.deltaTime);
 				}
@@ -121,7 +128,7 @@ public class TestController : NetworkBehaviour
 				if (hasAuthority)
 				{
 					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
-					controller.Move(inputDir * runSpeed * Time.deltaTime);
+					controller.Move(inputDir * moveSpeed * Time.deltaTime);
 				}
 			}
 		}
@@ -146,8 +153,8 @@ public class TestController : NetworkBehaviour
 		if (hasAuthority)
 		{
 			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController controller = go.GetComponent<TestController>();
-			controller.InjectMove(dir);
+			TestController player = go.GetComponent<TestController>();
+			player.InjectMove(dir);
 		}
 	}
 
@@ -157,8 +164,8 @@ public class TestController : NetworkBehaviour
 		if (hasAuthority)
 		{
 			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController controller = go.GetComponent<TestController>();
-			controller.InjectStop();
+			TestController player = go.GetComponent<TestController>();
+			player.InjectStop();
 		}
 	}
 
@@ -168,8 +175,8 @@ public class TestController : NetworkBehaviour
 		if (hasAuthority)
 		{
 			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController controller = go.GetComponent<TestController>();
-			controller.InjectCatch();
+			TestController player = go.GetComponent<TestController>();
+			player.InjectCatch();
 		}
 	}
 
@@ -179,19 +186,30 @@ public class TestController : NetworkBehaviour
 		if (hasAuthority)
 		{
 			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController controller = go.GetComponent<TestController>();
-			controller.InjectRun(pressed);
+			TestController player = go.GetComponent<TestController>();
+			player.InjectRun(pressed);
 		}
 	}
 
 	[Command]
-	void CmdHide(bool hide, Vector3 hidePos)
+	void CmdHide(HideInfo hideInfo)
 	{
 		if (hasAuthority)
 		{
 			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController controller = go.GetComponent<TestController>();
-			controller.InjectHide(hide, hidePos);
+			TestController player = go.GetComponent<TestController>();
+			player.InjectHide(hideInfo);
+		}
+	}
+
+	[Command]
+	void CmdLook(int id)
+	{
+		if (hasAuthority)
+		{
+			GameObject go = NetworkServer.FindLocalObject(netId);
+			TestController player = go.GetComponent<TestController>();
+			player.InjectLook(id);
 		}
 	}
 	#endregion
@@ -216,8 +234,8 @@ public class TestController : NetworkBehaviour
 		GameObject ripTarget = null;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, ref ripTarget))
 		{
-			TestController controller = ripTarget.GetComponent<TestController>();
-			controller.outputCaught = true;
+			TestController player = ripTarget.GetComponent<TestController>();
+			BeCaught(player);
 		}
 	}
 
@@ -227,20 +245,39 @@ public class TestController : NetworkBehaviour
 		inputRun = value;
 	}
 
-	void InjectHide(bool value, Vector3 hidePos)
+	void InjectHide(HideInfo hideInfo)
 	{
-		if (inputHide == value)
+		if (this.hideInfo.hide == hideInfo.hide && this.hideInfo.id == hideInfo.id)
 			return;
-		inputHide = value;
-		if (inputHide)
+		Box box = BoxMgr.instance.GetBox(hideInfo.id);
+		if (box == null)
+			return;
+		this.hideInfo = hideInfo;
+		if (hideInfo.hide)
 		{
-			gameObject.transform.position = hidePos;
+			thisTransform.position = box.transform.position;
+			box.SetHider(this);
 		}
 		else
 		{
-			gameObject.transform.position += gameObject.transform.forward * 1;
+			thisTransform.position = box.transform.position + thisTransform.forward * 1;
+			box.SetHider(null);
 		}
-		model.SetActive(!inputHide);
+	}
+
+	void InjectLook(int id)
+	{
+		Box box = BoxMgr.instance.GetBox(id);
+		if (box == null)
+			return;
+		TestController player = box.GetHider();
+		if (player == null)
+			return;
+		HideInfo hideInfo;
+		hideInfo.hide = false;
+		hideInfo.id = id;
+		player.InjectHide(hideInfo);
+		BeCaught(player);
 	}
 	#endregion
 
@@ -250,6 +287,25 @@ public class TestController : NetworkBehaviour
 		dir.y = 0.0f;
 		dir.Normalize();
 		targetRotation = Quaternion.LookRotation(dir);
+	}
+
+	private void OnHide(HideInfo hideInfo)
+	{
+		this.hideInfo = hideInfo;
+		if (!hasAuthority)
+		{
+			Box box = BoxMgr.instance.GetBox(hideInfo.id);
+			if (box != null)
+			{
+				if (hideInfo.hide)
+					thisTransform.position = box.transform.position;
+				else
+					thisTransform.position = box.transform.position + thisTransform.forward * 1;
+			}
+		}
+		model.SetActive(!hideInfo.hide);
+		if (isLocalPlayer)
+			EventMgr.instance.TriggerEvent<bool>("SwitchHide", this.hideInfo.hide);
 	}
 
 	private void OnMove(string gameEvent, Vector3 dir)
@@ -290,20 +346,67 @@ public class TestController : NetworkBehaviour
 			CmdRun(pressed);
 	}
 
-	private void OnSingPress(string gameEvent, GameObject go)
+	private void OnSignPress(string gameEvent, GameObject go)
 	{
-		if (hasAuthority)
-			InjectHide(true, go.transform.position);
-		else
-			CmdHide(true, go.transform.position);
+		Box box = go.GetComponent<Box>();
+		if (box != null)
+		{
+			HideInfo hideInfo;
+			hideInfo.hide = true;
+			hideInfo.id = box.id;
+			if (hasAuthority)
+				InjectHide(hideInfo);
+			else
+				CmdHide(hideInfo);
+		}
 	}
 
-	private void OnOutPress(string gameEvent)
+	private void OnBoxPress(string gameEvent)
 	{
-		if (hasAuthority)
-			InjectHide(false, transform.position);
+		if (this.hideInfo.hide)
+		{
+			// 处于躲藏状态，跳出箱子
+			HideInfo hideInfo;
+			hideInfo.hide = false;
+			hideInfo.id = this.hideInfo.id;
+			if (hasAuthority)
+				InjectHide(hideInfo);
+			else
+				CmdHide(hideInfo);
+		}
 		else
-			CmdHide(false, transform.position);
+		{
+			// 不处于躲藏状态，翻看箱子
+			Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
+			if (box == null)
+				return;
+			if (hasAuthority)
+				InjectLook(box.id);
+			else
+				CmdLook(box.id);
+		}
+	}
+
+	void OnControllerColliderHit(ControllerColliderHit hit)
+	{
+		TestController player = hit.gameObject.GetComponent<TestController>();
+		if (player == null)
+			return;
+		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, hit.gameObject, player.bodyRadius))
+		{
+			BeCaught(player);
+		}
+	}
+
+	void BeCaught(TestController player)
+	{
+		if (player.outputCaught)
+			return;
+		player.outputCaught = true;
+		Scheduler.Create(this, (sche, t, s) => {
+			// 一段时间后复活玩家
+			player.transform.position = NetManager.singleton.GetStartPosition().position;
+		}, 0f, 0f, 1f);
 	}
 	#endregion
 

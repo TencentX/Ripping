@@ -2,17 +2,13 @@
 using System.Collections;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
 /// 游戏逻辑
 /// </summary>
 public class Game : MonoBehaviour
 {
-	/// <summary>
-	/// 出生点
-	/// </summary>
-	public Transform[] bornPoses;
-
 	/// <summary>
 	/// 房间按钮
 	/// </summary>
@@ -29,13 +25,26 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public Button runBtn;
 
+	public Text hideText;
+
+	// 出生点
+	private List<Transform> bornPoses = new List<Transform>();
+
 	void Start()
 	{
 		DontDestroyOnLoad(gameObject);
-		foreach (Transform pos in bornPoses)
+		GameObject bornPos = GameObject.Find("BornPos");
+		for (int i = 0; i < bornPos.transform.childCount; i++)
+		{
+			Transform pos = bornPos.transform.GetChild(i);
+			if (!pos.gameObject.activeSelf)
+				continue;
+			bornPoses.Add(pos);
 			NetworkManager.RegisterStartPosition(pos);
+		}
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
+		EventMgr.instance.AddListener<bool>("SwitchHide", OnSwitchHide);
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
 		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
 	}
@@ -44,6 +53,14 @@ public class Game : MonoBehaviour
 	{
 		foreach (Transform pos in bornPoses)
 			NetManager.UnRegisterStartPosition(pos);
+	}
+
+	private void OnSwitchHide(string gameEvent, bool hide)
+	{
+		if (hide)
+			hideText.text = "跳出箱子";
+		else
+			hideText.text = "查看箱子";
 	}
 
 	private void OnClientConnect(string gameEvent)
@@ -97,8 +114,8 @@ public class Game : MonoBehaviour
 		EventMgr.instance.TriggerEvent("jumpPress");
 	}
 
-	public void OnOutBox()
+	public void OnBox()
 	{
-		EventMgr.instance.TriggerEvent("outPress");
+		EventMgr.instance.TriggerEvent("boxPress");
 	}
 }
