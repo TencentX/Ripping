@@ -5,21 +5,31 @@ using UnityEngine.Networking;
 public class TestController : NetworkBehaviour
 {
 	[Tooltip("移动速度")]
+	[SyncVar]
 	public float moveSpeed = 1.0f;
 
 	[Tooltip("奔跑速度")]
+	[SyncVar]
 	public float runSpeed = 2.0f;
 
+	[Tooltip("可蹦跑时间")]
+	[SyncVar]
+	public float runTime = 3.0f;
+
 	[Tooltip("身体半径，撕扯检测用")]
+	[SyncVar]
 	public float bodyRadius = 0.5f;
 
 	[Tooltip("旋转速度，每帧旋转的度数")]
+	[SyncVar]
 	public float rotateSpeed = 2f;
 
 	[Tooltip("撕扯距离")]
+	[SyncVar]
 	public float catchDistance = 1.0f;
 
 	[Tooltip("撕扯角度")]
+	[SyncVar]
 	public float catchDegree = 80.0f;
 
 	CharacterController controller;
@@ -32,6 +42,10 @@ public class TestController : NetworkBehaviour
 	// 目标朝向
 	private Quaternion targetRotation;
 
+	// 蹦跑开始、结束时间
+	private float runStartTime;
+	private float runEndTime;
+
 	// 输入
 	[SyncVar]
 	private Vector3 inputDir = Vector3.zero;
@@ -39,8 +53,10 @@ public class TestController : NetworkBehaviour
 	private bool inputStop = true;
 	[SyncVar]
 	private bool inputCatch = false;
-	[SyncVar]
+	[SyncVar(hook = "OnRun")]
 	private bool inputRun = false;
+	[SyncVar]
+	private float leftRunTime;
 	struct HideInfo
 	{
 		public bool hide;
@@ -110,39 +126,53 @@ public class TestController : NetworkBehaviour
 			// 抓人
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 		}
-		else if (!inputStop)
+		else if (inputRun)
 		{
-			// 正在移动
-			if (!inputRun)
+			// 正在跑动
+			float nowTime = Time.realtimeSinceStartup;
+			if (nowTime - runStartTime < leftRunTime)
+			{
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
+				if (hasAuthority)
+				{
+					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
+					controller.Move(inputDir * runSpeed * Time.deltaTime);
+				}
+			}
+			else
 			{
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
 				if (hasAuthority)
 				{
 					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 					controller.Move(inputDir * moveSpeed * Time.deltaTime);
+					InjectRun(false);
 				}
 			}
-			else
+		}
+		else if (!inputStop)
+		{
+			// 正在移动
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Move);
+			if (hasAuthority)
 			{
-				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
-				if (hasAuthority)
-				{
-					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
-					controller.Move(inputDir * moveSpeed * Time.deltaTime);
-				}
+				thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
+				controller.Move(inputDir * moveSpeed * Time.deltaTime);
 			}
 		}
 		else
 		{
 			// 停止移动
-			if (inputCatch)
-			{
-				stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
-			}
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+		}
+		if (isLocalPlayer)
+		{
+			float leftTime = 0.0f;
+			if (inputRun)
+				leftTime = Mathf.Max(Mathf.Min(leftRunTime - (Time.realtimeSinceStartup - runStartTime), runTime), 0);
 			else
-			{
-				stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
-			}
+				leftTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - runStartTime) + Time.realtimeSinceStartup - runEndTime, runTime), 0);
+			EventMgr.instance.TriggerEvent<float>("RefreshRunTime", leftTime);
 		}
 	}
 
@@ -241,8 +271,24 @@ public class TestController : NetworkBehaviour
 
 	void InjectRun(bool value)
 	{
-		inputStop = !value;
+		if (inputRun == value)
+			return;
 		inputRun = value;
+		if (inputRun)
+			inputStop = false;
+		else
+			inputStop = true;
+		if (inputRun)
+		{
+			float lastRunStartTime = runStartTime;
+			runStartTime = Time.realtimeSinceStartup;
+			leftRunTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - lastRunStartTime) + runStartTime - runEndTime, runTime), 0.0f);
+		}
+		else
+		{
+			runEndTime = Time.realtimeSinceStartup;
+			leftRunTime = Mathf.Max(Mathf.Min(leftRunTime - (runEndTime - runStartTime), runTime), 0.0f);
+		}
 	}
 
 	void InjectHide(HideInfo hideInfo)
@@ -291,9 +337,9 @@ public class TestController : NetworkBehaviour
 
 	private void OnHide(HideInfo hideInfo)
 	{
-		this.hideInfo = hideInfo;
 		if (!hasAuthority)
 		{
+			this.hideInfo = hideInfo;
 			Box box = BoxMgr.instance.GetBox(hideInfo.id);
 			if (box != null)
 			{
@@ -306,6 +352,22 @@ public class TestController : NetworkBehaviour
 		model.SetActive(!hideInfo.hide);
 		if (isLocalPlayer)
 			EventMgr.instance.TriggerEvent<bool>("SwitchHide", this.hideInfo.hide);
+	}
+	
+	private void OnRun(bool inputRun)
+	{
+		if (!hasAuthority)
+		{
+			this.inputRun = inputRun;
+			if (inputRun)
+			{
+				runStartTime = Time.realtimeSinceStartup;
+			}
+			else
+			{
+				runEndTime = Time.realtimeSinceStartup;
+			}
+		}
 	}
 
 	private void OnMove(string gameEvent, Vector3 dir)
@@ -406,6 +468,7 @@ public class TestController : NetworkBehaviour
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
+			inputRun = false;
 		}, 0f, 0f, 1f);
 	}
 	#endregion

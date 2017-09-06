@@ -25,7 +25,15 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public Button runBtn;
 
-	public Text hideText;
+	/// <summary>
+	/// 箱子按钮文字
+	/// </summary>
+	public Text boxText;
+
+	/// <summary>
+	/// 玩家信息
+	/// </summary>
+	public Text infoText;
 
 	// 出生点
 	private List<Transform> bornPoses = new List<Transform>();
@@ -47,6 +55,7 @@ public class Game : MonoBehaviour
 		EventMgr.instance.AddListener<bool>("SwitchHide", OnSwitchHide);
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
 		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
+		EventMgr.instance.AddListener<float>("RefreshRunTime", OnRunTimeRefresh);
 	}
 
 	void OnDestroy()
@@ -58,9 +67,9 @@ public class Game : MonoBehaviour
 	private void OnSwitchHide(string gameEvent, bool hide)
 	{
 		if (hide)
-			hideText.text = "跳出箱子";
+			boxText.text = "跳出箱子";
 		else
-			hideText.text = "查看箱子";
+			boxText.text = "查看箱子";
 	}
 
 	private void OnClientConnect(string gameEvent)
@@ -75,6 +84,11 @@ public class Game : MonoBehaviour
 		host.gameObject.SetActive(true);
 		client.gameObject.SetActive(true);
 		input.gameObject.SetActive(true);
+	}
+
+	private void OnRunTimeRefresh(string gameEvent, float runTime)
+	{
+		infoText.text = string.Concat("蹦跑时间：", runTime.ToString());
 	}
 
 	/// <summary>
