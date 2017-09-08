@@ -10,6 +10,7 @@ public class HudControl
     private Transform hudAnchor;
 
 	private int tipFloatAction = -1;
+	private int sliderTimeAction = -1;
 
 	const float NAME_OFFSET = 5f;
 	const float TIP_OFFSET = 25f;
@@ -30,11 +31,13 @@ public class HudControl
 		if (hudTextTip != null)
 			Object.Destroy(hudTextTip.gameObject);
 		if (hudSliderTime != null)
-			Object.Destroy(hudSliderTime.gameObject);      
+			Object.Destroy(hudSliderTime.gameObject);
     }
 
 	public void Show()
 	{
+		Scheduler.RemoveSchedule(tipFloatAction);
+		Scheduler.RemoveSchedule(sliderTimeAction);
 		if (hudTextName != null)
 			hudTextName.gameObject.SetActive(true);
 		if (hudTextTip != null)
@@ -86,24 +89,49 @@ public class HudControl
 		}, 0f, TIP_TIME, 0f).actionId;
 	}
 
-    public void ShowSliderTime(float current, float max)
+    public void ShowSliderTime(float start, float max, float zeroToMaxTime, System.Action callback)
     {
-		if (current >= max)
+		if (start >= max)
 		{
 			if (hudSliderTime != null)
-				UIMgr.instance.SetHudVisible(false, false);
+				hudSliderTime.Hide();
+			if (callback != null)
+				callback();
 		}
 		else
 		{
 			if (hudSliderTime == null)
 	        {
-	            string _path = "prefabs/uis/p_hud_hp_slider";
+	            string _path = "prefabs/uis/p_hud_time_slider";
 				hudSliderTime = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET) as HudSlider;
 	            UIMgr.instance.SetHudVisible(true, false);
 	        }
-			hudSliderTime.SetValue(current / max);
+			hudSliderTime.SetValue(start / max);
+			float delta = max - start;
+			float totalTime = zeroToMaxTime * delta / max;
+			sliderTimeAction = Scheduler.Create(this, (sche, t, s) => {
+				if (hudSliderTime == null)
+					return;
+				if (t >= s)
+				{
+					hudSliderTime.Hide();
+					if (callback != null)
+						callback();
+				}
+				else
+				{
+					hudSliderTime.SetValue((start + t / s * delta) / max);
+				}
+			}, 0f, totalTime, 0f).actionId;
 		}
     }
+
+	public void HideSliderTime()
+	{
+		if (hudSliderTime != null)
+			hudSliderTime.Hide();
+		Scheduler.RemoveSchedule(sliderTimeAction);
+	}
 
 	private Transform CreateAnchor(Transform parent, string name, Vector3 localPosition)
 	{

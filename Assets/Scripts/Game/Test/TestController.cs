@@ -38,7 +38,7 @@ public class TestController : NetworkBehaviour
 	public string playerName = "";
 
 	[Tooltip("视野半径")]
-	[SyncVar]
+	[SyncVar(hook = "OnSightRange")]
 	public float sightRange = 10;
 
 	[Tooltip("视野角度")]
@@ -62,6 +62,9 @@ public class TestController : NetworkBehaviour
 	private float runEndTime;
 	private float showRunTime;
 
+	// 是否正在打开箱子
+	private bool openingBox = false;
+
 	// 输入
 	[SyncVar]
 	private Vector3 inputDir = Vector3.zero;
@@ -80,7 +83,7 @@ public class TestController : NetworkBehaviour
 	}
 	[SyncVar(hook = "OnHide")]
 	private HideInfo hideInfo;
-	[SyncVar]
+	[SyncVar(hook = "OnCaught")]
 	private bool outputCaught = false;
 	[SyncVar(hook = "OnScore")]
 	private int score = 0;
@@ -428,6 +431,15 @@ public class TestController : NetworkBehaviour
 		}
 	}
 
+	private void OnCaught(bool outputCaught)
+	{
+		this.outputCaught = outputCaught;
+		if (isLocalPlayer && outputCaught)
+		{
+			hudControl.HideSliderTime();
+		}
+	}
+
 	private void OnScore(int score)
 	{
 		int delta = score - this.score;
@@ -439,6 +451,12 @@ public class TestController : NetworkBehaviour
 		}
 	}
 
+	private void OnSightRange(float range)
+	{
+		this.sightRange = range;
+		sight.range = this.sightRange;
+	}
+
 	private void OnPlayerName(string name)
 	{
 		this.playerName = name;
@@ -448,6 +466,9 @@ public class TestController : NetworkBehaviour
 
 	private void OnMove(string gameEvent, Vector3 dir)
 	{
+		// 正在开箱子，不处理
+		if (openingBox)
+			return;
 		if (hasAuthority)
 		{
 			// 有数据权限，直接移动
@@ -486,21 +507,30 @@ public class TestController : NetworkBehaviour
 
 	private void OnSignPress(string gameEvent, GameObject go)
 	{
-		Box box = go.GetComponent<Box>();
-		if (box != null)
+		System.Action callback;
+		openingBox = true;
+		callback = () =>
 		{
-			HideInfo hideInfo;
-			hideInfo.hide = true;
-			hideInfo.id = box.id;
-			if (hasAuthority)
-				InjectHide(hideInfo);
-			else
-				CmdHide(hideInfo);
-		}
+			openingBox = false;
+			Box box = go.GetComponent<Box>();
+			if (box != null)
+			{
+				HideInfo hideInfo;
+				hideInfo.hide = true;
+				hideInfo.id = box.id;
+				if (hasAuthority)
+					InjectHide(hideInfo);
+				else
+					CmdHide(hideInfo);
+			}
+		};
+		if (hudControl != null)
+			hudControl.ShowSliderTime(0f, 1f, 1f, callback);
 	}
 
 	private void OnBoxPress(string gameEvent)
 	{
+		System.Action callback;
 		if (this.hideInfo.hide)
 		{
 			// 处于躲藏状态，跳出箱子
@@ -515,13 +545,20 @@ public class TestController : NetworkBehaviour
 		else
 		{
 			// 不处于躲藏状态，翻看箱子
-			Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
-			if (box == null)
-				return;
-			if (hasAuthority)
-				InjectLook(box.id);
-			else
-				CmdLook(box.id);
+			openingBox = true;
+			callback = () =>
+			{
+				openingBox = false;
+				Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
+				if (box == null)
+					return;
+				if (hasAuthority)
+					InjectLook(box.id);
+				else
+					CmdLook(box.id);
+			};
+			if (hudControl != null)
+				hudControl.ShowSliderTime(0f, 1f, 1f, callback);
 		}
 	}
 
@@ -560,6 +597,8 @@ public class TestController : NetworkBehaviour
 
 	public void AddScore(int score)
 	{
+		sightRange += score * 0.1f;
+		runTime += 0.1f;
 		this.score += score;
 	}
 
