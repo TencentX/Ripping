@@ -569,4 +569,21 @@ public class UIMgr : Singleton<UIMgr>
 
         return uiPos;
     }
+
+	public FloatingTipPanel ShowTipString(string msg, float exitSec = 1.5f)
+	{
+		if (string.IsNullOrEmpty(msg))
+			return null;
+		var lastPanel = GetPanelBase("p_ui_common_floating_tip_panel");
+		if (lastPanel != null)
+			return lastPanel as FloatingTipPanel;
+		var tipPanel = CreatePanel("p_ui_common_floating_tip_panel") as FloatingTipPanel;
+		if (tipPanel != null)
+		{
+			tipPanel.text.text = msg;
+			tipPanel.existSec = exitSec;
+			return tipPanel;
+		}
+		return null;
+	}
 }

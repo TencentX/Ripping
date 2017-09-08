@@ -16,7 +16,7 @@
 		
         Pass    
         {    
-        	Tags { "LightMode"="ForwardAdd" }
+//        	Tags { "LightMode"="ForwardAdd" }
             ZWrite On  
             ZTest Less   
             Blend SrcAlpha OneMinusSrcAlpha 

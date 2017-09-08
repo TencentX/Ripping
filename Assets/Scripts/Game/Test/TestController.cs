@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.Networking;
+using System.Collections.Generic;
 
 public class TestController : NetworkBehaviour
 {
@@ -32,12 +33,26 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	public float catchDegree = 80.0f;
 
+	[Tooltip("玩家名称")]
+	[SyncVar(hook = "OnPlayerName")]
+	public string playerName = "";
+
+	[Tooltip("视野半径")]
+	[SyncVar]
+	public float sightRange = 10;
+
+	[Tooltip("视野角度")]
+	[SyncVar]
+	public float sightAngle = 80;
+
 	CharacterController controller;
 	PlayerStateMachine stateMachine;
 	Animation animate;
 	Light sight;
 	GameObject model;
 	Transform thisTransform;
+	HudControl hudControl;
+	SightController sightController;
 
 	// 目标朝向
 	private Quaternion targetRotation;
@@ -45,6 +60,7 @@ public class TestController : NetworkBehaviour
 	// 蹦跑开始、结束时间
 	private float runStartTime;
 	private float runEndTime;
+	private float showRunTime;
 
 	// 输入
 	[SyncVar]
@@ -66,15 +82,17 @@ public class TestController : NetworkBehaviour
 	private HideInfo hideInfo;
 	[SyncVar]
 	private bool outputCaught = false;
+	[SyncVar(hook = "OnScore")]
+	private int score = 0;
 
 	void Awake()
 	{
+		thisTransform = transform;
 		controller = GetComponent<CharacterController>();
 		stateMachine = GetComponent<PlayerStateMachine>();
 		animate = GetComponentInChildren<Animation>();
 		sight = GetComponentInChildren<Light>();
 		model = transform.Find("Actormodel").gameObject;
-		thisTransform = transform;
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Idle, EnterIdle);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Move, EnterMove);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Run, EnterRun);
@@ -87,9 +105,17 @@ public class TestController : NetworkBehaviour
 
 	void Start()
 	{
+		if (hudControl == null)
+		{
+			hudControl = new HudControl();
+			hudControl.Init(thisTransform);
+			hudControl.CreateHudName(playerName);
+		}
 		if (isLocalPlayer)
 		{
 			sight.enabled = true;
+			sight.range = sightRange;
+			sight.spotAngle = sightAngle - 10;
 			EventMgr.instance.TriggerEvent("beginProcessInput");
 			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
 			EventMgr.instance.AddListener("joystickStop", OnStop);
@@ -104,6 +130,8 @@ public class TestController : NetworkBehaviour
 		}
 		if (hasAuthority)
 			RipMgr.instance.AddTarget(gameObject, bodyRadius);
+		if (isClient)
+			sightController = gameObject.AddMissingComponent<SightController>();
 	}
 
 	void FixedUpdate()
@@ -165,14 +193,32 @@ public class TestController : NetworkBehaviour
 			// 停止移动
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		}
+	}
+
+	private List<SightController> targetsInSight = new List<SightController>();
+	private List<SightController> targetsOutSight = new List<SightController>();
+	void Update()
+	{
 		if (isLocalPlayer)
 		{
-			float leftTime = 0.0f;
+			// 计算蹦跑时间
+			float lastShowRunTime = showRunTime;
 			if (inputRun)
-				leftTime = Mathf.Max(Mathf.Min(leftRunTime - (Time.realtimeSinceStartup - runStartTime), runTime), 0);
+				showRunTime = Mathf.Max(Mathf.Min(leftRunTime - (Time.realtimeSinceStartup - runStartTime), runTime), 0);
 			else
-				leftTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - runStartTime) + Time.realtimeSinceStartup - runEndTime, runTime), 0);
-			EventMgr.instance.TriggerEvent<float>("RefreshRunTime", leftTime);
+				showRunTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - runStartTime) + Time.realtimeSinceStartup - runEndTime, runTime), 0);
+			if (!lastShowRunTime.Equals(showRunTime))
+				EventMgr.instance.TriggerEvent<float>("RefreshRunTime", showRunTime);
+			// 计算视野
+			SightMgr.instance.Check(sightController, sightRange, sightAngle, ref targetsInSight, ref targetsOutSight);
+			for (int i = 0; i < targetsInSight.Count; i++)
+			{
+				targetsInSight[i].BecameVisible();
+			}
+			for (int i = 0; i < targetsOutSight.Count; i++)
+			{
+				targetsOutSight[i].BecameInvisible();
+			}
 		}
 	}
 
@@ -242,6 +288,12 @@ public class TestController : NetworkBehaviour
 			player.InjectLook(id);
 		}
 	}
+
+	[Command]
+	void CmdPlayerName(string name)
+	{
+		playerName = name;
+	}
 	#endregion
 
 	#region input
@@ -306,7 +358,8 @@ public class TestController : NetworkBehaviour
 		}
 		else
 		{
-			thisTransform.position = box.transform.position + thisTransform.forward * 1;
+			thisTransform.position = box.GetOutPos();
+			thisTransform.rotation = box.GetOutRotation();
 			box.SetHider(null);
 		}
 	}
@@ -344,14 +397,19 @@ public class TestController : NetworkBehaviour
 			if (box != null)
 			{
 				if (hideInfo.hide)
+				{
 					thisTransform.position = box.transform.position;
+				}
 				else
-					thisTransform.position = box.transform.position + thisTransform.forward * 1;
+				{
+					thisTransform.position = box.GetOutPos();
+					thisTransform.rotation = box.GetOutRotation();
+				}
 			}
 		}
 		model.SetActive(!hideInfo.hide);
 		if (isLocalPlayer)
-			EventMgr.instance.TriggerEvent<bool>("SwitchHide", this.hideInfo.hide);
+			EventMgr.instance.TriggerEvent<bool>("SwitchHide", hideInfo.hide);
 	}
 	
 	private void OnRun(bool inputRun)
@@ -368,6 +426,24 @@ public class TestController : NetworkBehaviour
 				runEndTime = Time.realtimeSinceStartup;
 			}
 		}
+	}
+
+	private void OnScore(int score)
+	{
+		int delta = score - this.score;
+		this.score = score;
+		if (isLocalPlayer && delta != 0)
+		{
+			hudControl.ShoweHudTip("+" + delta);
+			EventMgr.instance.TriggerEvent<int, int>("AddScore", score, delta);
+		}
+	}
+
+	private void OnPlayerName(string name)
+	{
+		this.playerName = name;
+		if (hudControl != null)
+			hudControl.CreateHudName(this.playerName);
 	}
 
 	private void OnMove(string gameEvent, Vector3 dir)
@@ -464,12 +540,53 @@ public class TestController : NetworkBehaviour
 	{
 		if (player.outputCaught)
 			return;
+		// 自己加分
+		int half = Mathf.CeilToInt(player.score / 2.0f);
+		int score = Mathf.Max(half, 1);
+		AddScore(score);
+		// 自己加能量
+		leftRunTime = Mathf.Min(leftRunTime + runTime * 0.3f, runTime);
+		// 别人扣分
+		player.AddScore(-half);
 		player.outputCaught = true;
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
 			inputRun = false;
 		}, 0f, 0f, 1f);
+		// 通知所有玩家
+		RpcBeCaught(playerName, player.playerName, half);
+	}
+
+	public void AddScore(int score)
+	{
+		this.score += score;
+	}
+
+	[ClientRpc]
+	public void RpcBeCaught(string casterName, string reciverName, int score)
+	{
+		string tip = string.Concat(casterName, "玩家撕掉了", reciverName, "玩家的名牌", "获得", score, "分");
+		UIMgr.instance.ShowTipString(tip);
+	}
+
+	public override void OnStartLocalPlayer()
+	{
+		base.OnStartLocalPlayer();
+		if (hasAuthority)
+			playerName = Game.inputName;
+		else
+			CmdPlayerName(Game.inputName);
+	}
+
+	public void GetInSight()
+	{
+		hudControl.Show();
+	}
+	
+	public void OutOfSight()
+	{
+		hudControl.Hide();
 	}
 	#endregion
 
@@ -505,4 +622,12 @@ public class TestController : NetworkBehaviour
 		}, 0f, 0f, 1f);
 	}
 	#endregion 玩家状态
+
+	void OnDestroy()
+	{
+		RipMgr.instance.RemoveTarget(gameObject);
+		if (hudControl != null)
+			hudControl.Release();
+		hudControl = null;
+	}
 }

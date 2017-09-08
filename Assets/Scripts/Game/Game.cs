@@ -16,9 +16,19 @@ public class Game : MonoBehaviour
 	public Button client;
 
 	/// <summary>
+	/// 我的ip
+	/// </summary>
+	public Text myIp;
+
+	/// <summary>
 	/// ip输入框
 	/// </summary>
 	public InputField input;
+
+	/// <summary>
+	/// 昵称输入框
+	/// </summary>
+	public InputField playerName;
 
 	/// <summary>
 	/// 蹦跑按钮
@@ -26,17 +36,29 @@ public class Game : MonoBehaviour
 	public Button runBtn;
 
 	/// <summary>
+	/// 箱子按钮
+	/// </summary>
+	public Button boxBtn;
+
+	/// <summary>
 	/// 箱子按钮文字
 	/// </summary>
 	public Text boxText;
 
 	/// <summary>
-	/// 玩家信息
+	/// 玩家蹦跑信息
 	/// </summary>
-	public Text infoText;
+	public Text runText;
+
+	/// <summary>
+	/// 玩家分数信息
+	/// </summary>
+	public Text scoreText;
 
 	// 出生点
 	private List<Transform> bornPoses = new List<Transform>();
+
+	public static string inputName = "";
 
 	void Start()
 	{
@@ -50,12 +72,19 @@ public class Game : MonoBehaviour
 			bornPoses.Add(pos);
 			NetworkManager.RegisterStartPosition(pos);
 		}
+		myIp.text = Network.player.ipAddress;
+		OnPlayerNameChange();
+		boxBtn.gameObject.SetActive(false);
+		BoxMgr.instance.Init();
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
 		EventMgr.instance.AddListener<bool>("SwitchHide", OnSwitchHide);
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
 		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
 		EventMgr.instance.AddListener<float>("RefreshRunTime", OnRunTimeRefresh);
+		EventMgr.instance.AddListener<int, int>("AddScore", OnAddScore);
+		EventMgr.instance.AddListener<bool>("CloseToBox", OnCloseToBox);
+		playerName.onValueChanged.AddListener(delegate {OnPlayerNameChange();});
 	}
 
 	void OnDestroy()
@@ -67,9 +96,14 @@ public class Game : MonoBehaviour
 	private void OnSwitchHide(string gameEvent, bool hide)
 	{
 		if (hide)
+		{
 			boxText.text = "跳出箱子";
+			boxBtn.gameObject.SetActive(true);
+		}
 		else
+		{
 			boxText.text = "查看箱子";
+		}
 	}
 
 	private void OnClientConnect(string gameEvent)
@@ -77,6 +111,7 @@ public class Game : MonoBehaviour
 		host.gameObject.SetActive(false);
 		client.gameObject.SetActive(false);
 		input.gameObject.SetActive(false);
+		playerName.gameObject.SetActive(false);
 	}
 
 	private void OnClientDisconnect(string gameEvent)
@@ -84,11 +119,27 @@ public class Game : MonoBehaviour
 		host.gameObject.SetActive(true);
 		client.gameObject.SetActive(true);
 		input.gameObject.SetActive(true);
+		playerName.gameObject.SetActive(true);
 	}
 
 	private void OnRunTimeRefresh(string gameEvent, float runTime)
 	{
-		infoText.text = string.Concat("蹦跑时间：", runTime.ToString());
+		runText.text = string.Concat("蹦跑时间：", runTime.ToString());
+	}
+
+	private void OnAddScore(string gameEvent, int score, int delta)
+	{
+		scoreText.text = string.Concat("分数：", score.ToString());
+	}
+
+	private void OnCloseToBox(string gameEvent, bool close)
+	{
+		boxBtn.gameObject.SetActive(close);
+	}
+
+	private void OnPlayerNameChange()
+	{
+		inputName = playerName.text;
 	}
 
 	/// <summary>
@@ -96,7 +147,13 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public void OnClickHost()
 	{
-		NetManager.singleton.StartHost();
+		if (string.IsNullOrEmpty(inputName))
+		{
+			UIMgr.instance.ShowTipString("昵称不能为空！");
+			return;
+		}
+		if (NetManager.singleton.StartHost() != null && NetworkServer.active)
+			CoinMgr.instance.Init();
 	}
 
 	/// <summary>
@@ -104,6 +161,11 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public void OnClickClient()
 	{
+		if (string.IsNullOrEmpty(inputName))
+		{
+			UIMgr.instance.ShowTipString("昵称不能为空！");
+			return;
+		}
 		NetManager.singleton.networkAddress = input.text;
 		NetManager.singleton.StartClient();
 	}

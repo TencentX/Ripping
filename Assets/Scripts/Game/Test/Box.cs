@@ -12,6 +12,11 @@ public class Box : MonoBehaviour
 	/// </summary>
 	public int id;
 
+	/// <summary>
+	/// 跳出的位置
+	/// </summary>
+	public Transform outTransform;
+
 	// 隐藏的玩家
 	private TestController player;
 
@@ -25,6 +30,7 @@ public class Box : MonoBehaviour
 		SignPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_sign_panel") as SignPanel;
 		panel.SetOwner(gameObject);
 		panel.gameObject.SetActive(true);
+		EventMgr.instance.TriggerEvent<bool>("CloseToBox", true);
 	}
 
 	public void OnTriggerExit(Collider collider)
@@ -37,6 +43,7 @@ public class Box : MonoBehaviour
 		GameObject panel = UIMgr.instance.GetPanel("p_ui_sign_panel");
 		if (panel != null)
 			panel.SetActive(false);
+		EventMgr.instance.TriggerEvent<bool>("CloseToBox", false);
 	}
 
 	public void SetHider(TestController player)
@@ -47,5 +54,15 @@ public class Box : MonoBehaviour
 	public TestController GetHider()
 	{
 		return player;
+	}
+
+	public Vector3 GetOutPos()
+	{
+		return outTransform.position;
+	}
+
+	public Quaternion GetOutRotation()
+	{
+		return outTransform.rotation;
 	}
 }

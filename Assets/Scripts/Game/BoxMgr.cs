@@ -6,10 +6,17 @@ using System.Collections;
 /// </summary>
 public class BoxMgr : Singleton<BoxMgr>
 {
+	// 所有箱子
+	private Box[] boxes;
+
+	public void Init()
+	{
+		boxes = GameObject.FindObjectsOfType<Box>();
+	}
+
 	public Box GetBox(int id)
 	{
 		Box box = null;
-		Box[] boxes = GameObject.FindObjectsOfType<Box>();
 		for (int i = 0; i < boxes.Length; i++)
 		{
 			if (boxes[i].id == id)

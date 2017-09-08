@@ -17,7 +17,7 @@ public class Scheduler
 
 	static int SchedulerId = 1;
 	static bool Updating = false;
-	static Dictionary<Priority, Dictionary<int, Scheduler>> scheMap = null;
+	static Dictionary<int, Dictionary<int, Scheduler>> scheMap = null;
 	static List<System.Action> addOp = null;
 	static List<System.Action> removeOp = null;
 
@@ -35,6 +35,7 @@ public class Scheduler
 	bool pause = false;
     public bool ignoreTimeScale = false;
 
+	static List<int> a = new List<int>();
 	static public void UpdateSche(){
 		Updating = true;
 
@@ -43,21 +44,24 @@ public class Scheduler
             removeOp[i]();
         }
         removeOp.Clear();
-
+		
         for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			foreach(var sche in scheMap[i]){
-                // 默认移除
-                bool stop = false;
-
-                // 避免其中一个异常，导致整个游戏卡死
-                try{
-					stop = sche.Value.Update();
-                }catch (System.Exception ex){
-                    Debug.LogError("Scheduler Update:" + ex.Message + " exception:" + ex.StackTrace);
-		        }
-
+			Dictionary<int, Scheduler>.Enumerator enumerator = scheMap[(int)i].GetEnumerator();
+			while (enumerator.MoveNext())
+			{
+				Scheduler sche = enumerator.Current.Value as Scheduler;
+				// 默认移除
+				bool stop = false;
+				
+				// 避免其中一个异常，导致整个游戏卡死
+				try{
+					stop = sche.Update();
+				}catch (System.Exception ex){
+					Debug.LogError("Scheduler Update:" + ex.Message + " exception:" + ex.StackTrace);
+				}
+				
 				if (stop == false){
-					sche.Value.Stop();
+					sche.Stop();
 				}
 			}
 		}
@@ -79,11 +83,11 @@ public class Scheduler
 	{
 		// init
 		if (scheMap == null){
-			scheMap = new Dictionary<Priority, Dictionary<int, Scheduler>>();
+			scheMap = new Dictionary<int, Dictionary<int, Scheduler>>();
 			addOp = new List<System.Action>();
 			removeOp = new List<System.Action>();
 			for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-				scheMap[i] = new Dictionary<int, Scheduler>();
+				scheMap[(int)i] = new Dictionary<int, Scheduler>();
 			}
 		}
 	}
@@ -126,7 +130,7 @@ public class Scheduler
         scheduler.ignoreTimeScale = ignore;
 
 		System.Action func = ()=>{
-			scheMap[pri][scheduler.actionId] = scheduler;
+			scheMap[(int)pri][scheduler.actionId] = scheduler;
 		};
 
 		if (Scheduler.Updating){
@@ -142,7 +146,8 @@ public class Scheduler
 	{
 		if (scheId < 0) return scheId;
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			var priMap = scheMap[i];
+			var priMap = scheMap[(int)i];
+			var key = i;
 			if (priMap.ContainsKey(scheId)){
 				System.Action func = ()=>{
 					if (priMap.ContainsKey(scheId)){
@@ -166,18 +171,23 @@ public class Scheduler
     static public void RemoveSchedule(System.Object target)
     {
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			foreach(var sche in scheMap[i]){
-				if (sche.Value.owner == target){
-					Scheduler.RemoveSchedule(sche.Key);
-				}
-			}
+            if (scheMap[(int)i] != null)
+            {
+                foreach (var sche in scheMap[(int)i])
+                {
+                    if (sche.Value != null && sche.Value.owner == target)
+                    {
+                        Scheduler.RemoveSchedule(sche.Key);
+                    }
+                }
+            }
 		}
     }
 
 	static public void PauseOwner(System.Object target)
     {
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			foreach(var sche in scheMap[i]){
+			foreach(var sche in scheMap[(int)i]){
 				if (sche.Value.owner == target){
 					sche.Value.Pause();
 				}
@@ -187,7 +197,7 @@ public class Scheduler
 	static public void ResumeOwner(System.Object target)
     {
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			foreach(var sche in scheMap[i]){
+			foreach(var sche in scheMap[(int)i]){
 				if (sche.Value.owner == target){
 					sche.Value.Resume();
 				}
@@ -198,8 +208,8 @@ public class Scheduler
 	static public Scheduler GetSchedule(int scheId)
 	{
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
-			if (scheMap[i].ContainsKey(scheId)){
-				return scheMap[i][scheId];
+			if (scheMap[(int)i].ContainsKey(scheId)){
+				return scheMap[(int)i][scheId];
 			}
 		}
 		return null;
