@@ -13,9 +13,11 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	public float runSpeed = 2.0f;
 
-	[Tooltip("可蹦跑时间")]
+	[Tooltip("可奔跑能量")]
 	[SyncVar]
-	public float runTime = 3.0f;
+	public float runEnergy = 3f;
+	const float CONSUME_SPEED = 1f;
+	const float RECOVER_SPEED = 0.5f;
 
 	[Tooltip("身体半径，撕扯检测用")]
 	[SyncVar]
@@ -60,7 +62,8 @@ public class TestController : NetworkBehaviour
 	// 蹦跑开始、结束时间
 	private float runStartTime;
 	private float runEndTime;
-	private float showRunTime;
+	private float leftRunEnergy;
+	private float showRunEnergy;
 
 	// 是否正在打开箱子
 	private bool openingBox = false;
@@ -74,8 +77,6 @@ public class TestController : NetworkBehaviour
 	private bool inputCatch = false;
 	[SyncVar(hook = "OnRun")]
 	private bool inputRun = false;
-	[SyncVar]
-	private float leftRunTime;
 	struct HideInfo
 	{
 		public bool hide;
@@ -118,7 +119,7 @@ public class TestController : NetworkBehaviour
 		{
 			sight.enabled = true;
 			sight.range = sightRange;
-			sight.spotAngle = sightAngle - 10;
+			sight.spotAngle = sightAngle;
 			EventMgr.instance.TriggerEvent("beginProcessInput");
 			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
 			EventMgr.instance.AddListener("joystickStop", OnStop);
@@ -131,6 +132,7 @@ public class TestController : NetworkBehaviour
 		{
 			sight.enabled = false;
 		}
+		leftRunEnergy = runEnergy;
 		if (hasAuthority)
 			RipMgr.instance.AddTarget(gameObject, bodyRadius);
 		if (isClient)
@@ -161,7 +163,7 @@ public class TestController : NetworkBehaviour
 		{
 			// 正在跑动
 			float nowTime = Time.realtimeSinceStartup;
-			if (nowTime - runStartTime < leftRunTime)
+			if ((nowTime - runStartTime) / CONSUME_SPEED < leftRunEnergy)
 			{
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
 				if (hasAuthority)
@@ -205,13 +207,18 @@ public class TestController : NetworkBehaviour
 		if (isLocalPlayer)
 		{
 			// 计算蹦跑时间
-			float lastShowRunTime = showRunTime;
+			float lastShowRunEnergy = showRunEnergy;
+			float now = Time.realtimeSinceStartup;
 			if (inputRun)
-				showRunTime = Mathf.Max(Mathf.Min(leftRunTime - (Time.realtimeSinceStartup - runStartTime), runTime), 0);
+				showRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy - (now - runStartTime) * CONSUME_SPEED, runEnergy), 0);
 			else
-				showRunTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - runStartTime) + Time.realtimeSinceStartup - runEndTime, runTime), 0);
-			if (!lastShowRunTime.Equals(showRunTime))
-				EventMgr.instance.TriggerEvent<float>("RefreshRunTime", showRunTime);
+				showRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy + (now - runEndTime) * RECOVER_SPEED, runEnergy), 0);
+			if (!lastShowRunEnergy.Equals(showRunEnergy))
+			{
+				EventMgr.instance.TriggerEvent<float>("RefreshRunTime", showRunEnergy);
+			}
+			if (hudControl != null)
+				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
 			// 计算视野
 			SightMgr.instance.Check(sightController, sightRange, sightAngle, ref targetsInSight, ref targetsOutSight);
 			for (int i = 0; i < targetsInSight.Count; i++)
@@ -333,16 +340,16 @@ public class TestController : NetworkBehaviour
 			inputStop = false;
 		else
 			inputStop = true;
+		float now = Time.realtimeSinceStartup;
 		if (inputRun)
 		{
-			float lastRunStartTime = runStartTime;
-			runStartTime = Time.realtimeSinceStartup;
-			leftRunTime = Mathf.Max(Mathf.Min(runTime - (runEndTime - lastRunStartTime) + runStartTime - runEndTime, runTime), 0.0f);
+			leftRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy + (now - runEndTime) * RECOVER_SPEED, runEnergy), 0);
+			runStartTime = now;
 		}
 		else
 		{
-			runEndTime = Time.realtimeSinceStartup;
-			leftRunTime = Mathf.Max(Mathf.Min(leftRunTime - (runEndTime - runStartTime), runTime), 0.0f);
+			leftRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy - (now - runStartTime) * CONSUME_SPEED, runEnergy), 0);
+			runEndTime = now;
 		}
 	}
 
@@ -353,14 +360,29 @@ public class TestController : NetworkBehaviour
 		Box box = BoxMgr.instance.GetBox(hideInfo.id);
 		if (box == null)
 			return;
-		this.hideInfo = hideInfo;
 		if (hideInfo.hide)
 		{
-			thisTransform.position = box.transform.position;
-			box.SetHider(this);
+			TestController player = box.GetHider();
+			if (player == null)
+			{
+				// 箱子里没人，则躲进箱子
+				thisTransform.position = box.transform.position;
+				box.SetHider(this);
+				this.hideInfo = hideInfo;
+			}
+			else
+			{
+				// 箱子里有人，则抓人
+				HideInfo newhideInfo;
+				newhideInfo.hide = false;
+				newhideInfo.id = hideInfo.id;
+				player.InjectHide(newhideInfo);
+				BeCaught(player);
+			}
 		}
 		else
 		{
+			this.hideInfo = hideInfo;
 			thisTransform.position = box.GetOutPos();
 			thisTransform.rotation = box.GetOutRotation();
 			box.SetHider(null);
@@ -420,13 +442,16 @@ public class TestController : NetworkBehaviour
 		if (!hasAuthority)
 		{
 			this.inputRun = inputRun;
+			float now = Time.realtimeSinceStartup;
 			if (inputRun)
 			{
-				runStartTime = Time.realtimeSinceStartup;
+				leftRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy + (now - runEndTime) * RECOVER_SPEED, runEnergy), 0);
+				runStartTime = now;
 			}
 			else
 			{
-				runEndTime = Time.realtimeSinceStartup;
+				leftRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy - (now - runStartTime) * CONSUME_SPEED, runEnergy), 0);
+				runEndTime = now;
 			}
 		}
 	}
@@ -582,7 +607,7 @@ public class TestController : NetworkBehaviour
 		int score = Mathf.Max(half, 1);
 		AddScore(score);
 		// 自己加能量
-		leftRunTime = Mathf.Min(leftRunTime + runTime * 0.3f, runTime);
+		leftRunEnergy = Mathf.Min(leftRunEnergy + runEnergy * 0.3f, runEnergy);
 		// 别人扣分
 		player.AddScore(-half);
 		player.outputCaught = true;
@@ -598,14 +623,14 @@ public class TestController : NetworkBehaviour
 	public void AddScore(int score)
 	{
 		sightRange += score * 0.1f;
-		runTime += 0.1f;
+		runEnergy += 0.1f;
 		this.score += score;
 	}
 
 	[ClientRpc]
 	public void RpcBeCaught(string casterName, string reciverName, int score)
 	{
-		string tip = string.Concat(casterName, "玩家撕掉了", reciverName, "玩家的名牌", "获得", score, "分");
+		string tip = string.Concat("[FF0000]", casterName, "[-]玩家撕掉了[FF0000]", reciverName, "[-]玩家的名牌", "获得[FF0000]", score, "分[-]");
 		UIMgr.instance.ShowTipString(tip);
 	}
 

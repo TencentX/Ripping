@@ -7,12 +7,13 @@ public class HudControl
     private HudLabel hudTextName = null;
 	private HudLabel hudTextTip = null;
     private HudSlider hudSliderTime = null;
+	private HudSlider hudSliderEnergy = null;
     private Transform hudAnchor;
 
 	private int tipFloatAction = -1;
 	private int sliderTimeAction = -1;
 
-	const float NAME_OFFSET = 5f;
+	const float NAME_OFFSET = 10f;
 	const float TIP_OFFSET = 25f;
 	const float SLIDER_OFFSET = 20f;
 	const float TIP_TIME = 1.0f;
@@ -32,6 +33,8 @@ public class HudControl
 			Object.Destroy(hudTextTip.gameObject);
 		if (hudSliderTime != null)
 			Object.Destroy(hudSliderTime.gameObject);
+		if (hudSliderEnergy != null)
+			Object.Destroy(hudSliderEnergy.gameObject);
     }
 
 	public void Show()
@@ -44,6 +47,8 @@ public class HudControl
 			hudTextTip.gameObject.SetActive(true);
 		if (hudSliderTime != null)
 			hudSliderTime.gameObject.SetActive(true);
+		if (hudSliderEnergy != null)
+			hudSliderEnergy.gameObject.SetActive(true);
 	}
 
 	public void Hide()
@@ -54,6 +59,8 @@ public class HudControl
 			hudTextTip.gameObject.SetActive(false);
 		if (hudSliderTime != null)
 			hudSliderTime.gameObject.SetActive(false);
+		if (hudSliderEnergy != null)
+			hudSliderEnergy.gameObject.SetActive(false);
 	}
 
     public void CreateHudName(string name)
@@ -103,7 +110,7 @@ public class HudControl
 			if (hudSliderTime == null)
 	        {
 	            string _path = "prefabs/uis/p_hud_time_slider";
-				hudSliderTime = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET) as HudSlider;
+				hudSliderTime = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET + 10) as HudSlider;
 	            UIMgr.instance.SetHudVisible(true, false);
 	        }
 			hudSliderTime.SetValue(start / max);
@@ -131,6 +138,17 @@ public class HudControl
 		if (hudSliderTime != null)
 			hudSliderTime.Hide();
 		Scheduler.RemoveSchedule(sliderTimeAction);
+	}
+
+	public void ShowSliderEnergy(float start, float max)
+	{
+		if (hudSliderEnergy == null)
+		{
+			string _path = "prefabs/uis/p_hud_time_slider";
+			hudSliderEnergy = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET) as HudSlider;
+			UIMgr.instance.SetHudVisible(true, false);
+		}
+		hudSliderEnergy.SetValue(start / max);
 	}
 
 	private Transform CreateAnchor(Transform parent, string name, Vector3 localPosition)
