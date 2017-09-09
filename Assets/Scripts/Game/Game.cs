@@ -36,14 +36,14 @@ public class Game : MonoBehaviour
 	public Button runBtn;
 
 	/// <summary>
-	/// 箱子按钮
+	/// 查看箱子
 	/// </summary>
-	public Button boxBtn;
+	public Button lookBoxBtn;
 
 	/// <summary>
-	/// 箱子按钮文字
+	/// 跳出箱子
 	/// </summary>
-	public Text boxText;
+	public Button outBoxBtn;
 
 	/// <summary>
 	/// 玩家蹦跑信息
@@ -55,6 +55,16 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public Text scoreText;
 
+	/// <summary>
+	/// 倒计时
+	/// </summary>
+	public Text countDownTime;
+
+	/// <summary>
+	/// 一局总时间
+	/// </summary>
+	public const float ONE_GAME_TIME = 600f;
+
 	// 出生点
 	private List<Transform> bornPoses = new List<Transform>();
 
@@ -62,7 +72,7 @@ public class Game : MonoBehaviour
 
 	void Start()
 	{
-		DontDestroyOnLoad(gameObject);
+		GameDataMgr.instance.LoadAllData();
 		GameObject bornPos = GameObject.Find("BornPos");
 		for (int i = 0; i < bornPos.transform.childCount; i++)
 		{
@@ -73,8 +83,8 @@ public class Game : MonoBehaviour
 			NetworkManager.RegisterStartPosition(pos);
 		}
 		myIp.text = Network.player.ipAddress;
-		OnPlayerNameChange();
-		boxBtn.gameObject.SetActive(false);
+		lookBoxBtn.gameObject.SetActive(false);
+		outBoxBtn.gameObject.SetActive(false);
 		BoxMgr.instance.Init();
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
@@ -85,25 +95,27 @@ public class Game : MonoBehaviour
 		EventMgr.instance.AddListener<int, int>("AddScore", OnAddScore);
 		EventMgr.instance.AddListener<bool>("CloseToBox", OnCloseToBox);
 		playerName.onValueChanged.AddListener(delegate {OnPlayerNameChange();});
+		NickNameMgr.instance.Init();
+		playerName.text = NickNameMgr.instance.GetRandomName();
+	}
+
+	void Update()
+	{
+		countDownTime.text = GlobalFunctions.GetFormatTimeString((int)RoundMgr.instance.leftTime);
 	}
 
 	void OnDestroy()
 	{
+		EventMgr.instance.RemoveListener(this);
 		foreach (Transform pos in bornPoses)
 			NetManager.UnRegisterStartPosition(pos);
 	}
 
 	private void OnSwitchHide(string gameEvent, bool hide)
 	{
+		outBoxBtn.gameObject.SetActive(hide);
 		if (hide)
-		{
-			boxText.text = "跳出箱子";
-			boxBtn.gameObject.SetActive(true);
-		}
-		else
-		{
-			boxText.text = "查看箱子";
-		}
+			lookBoxBtn.gameObject.SetActive(false);
 	}
 
 	private void OnClientConnect(string gameEvent)
@@ -124,7 +136,7 @@ public class Game : MonoBehaviour
 
 	private void OnRunTimeRefresh(string gameEvent, float runTime)
 	{
-		runText.text = string.Concat("蹦跑时间：", runTime.ToString());
+		runText.text = string.Concat("奔跑时间：", runTime.ToString());
 	}
 
 	private void OnAddScore(string gameEvent, int score, int delta)
@@ -134,7 +146,7 @@ public class Game : MonoBehaviour
 
 	private void OnCloseToBox(string gameEvent, bool close)
 	{
-		boxBtn.gameObject.SetActive(close);
+		lookBoxBtn.gameObject.SetActive(close);
 	}
 
 	private void OnPlayerNameChange()
@@ -153,7 +165,10 @@ public class Game : MonoBehaviour
 			return;
 		}
 		if (NetManager.singleton.StartHost() != null && NetworkServer.active)
+		{
 			CoinMgr.instance.Init();
+			RoundMgr.instance.Start();
+		}
 	}
 
 	/// <summary>

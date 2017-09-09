@@ -35,7 +35,6 @@ public class Scheduler
 	bool pause = false;
     public bool ignoreTimeScale = false;
 
-	static List<int> a = new List<int>();
 	static public void UpdateSche(){
 		Updating = true;
 
@@ -147,7 +146,6 @@ public class Scheduler
 		if (scheId < 0) return scheId;
 		for (Priority i=Priority.Highest; i<=Priority.Lowest; ++i){
 			var priMap = scheMap[(int)i];
-			var key = i;
 			if (priMap.ContainsKey(scheId)){
 				System.Action func = ()=>{
 					if (priMap.ContainsKey(scheId)){

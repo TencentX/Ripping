@@ -26,6 +26,8 @@ public class CoinMgr : Singleton<CoinMgr>
 	public void Init()
 	{
 		coins.Clear();
+		nonCoinPos.Clear();
+		lastRemoveCoinPos = null;
 		for (int i = 0; i < NetManager.singleton.spawnPrefabs.Count; i++)
 		{
 			GameObject prefab = NetManager.singleton.spawnPrefabs[i];

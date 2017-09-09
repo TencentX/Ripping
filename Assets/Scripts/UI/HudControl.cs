@@ -5,6 +5,7 @@ using System.Collections.Generic;
 public class HudControl
 {
     private HudLabel hudTextName = null;
+	private HudLabel hutTextScore = null;
 	private HudLabel hudTextTip = null;
     private HudSlider hudSliderTime = null;
 	private HudSlider hudSliderEnergy = null;
@@ -13,9 +14,11 @@ public class HudControl
 	private int tipFloatAction = -1;
 	private int sliderTimeAction = -1;
 
-	const float NAME_OFFSET = 10f;
-	const float TIP_OFFSET = 25f;
-	const float SLIDER_OFFSET = 20f;
+	const float NAME_OFFSET = 30f;
+	const float SCORE_OFFSET = 50f;
+	const float TIP_OFFSET = 70f;
+	const float SLIDER_OFFSET = 60f;
+	const float ENERGY_OFFSET = 0f;
 	const float TIP_TIME = 1.0f;
 	const float TIP_FLY_HEIGHT = 30f;
 
@@ -29,6 +32,8 @@ public class HudControl
     {
         if (hudTextName != null)
             Object.Destroy(hudTextName.gameObject);
+		if (hutTextScore != null)
+			Object.Destroy(hutTextScore.gameObject);
 		if (hudTextTip != null)
 			Object.Destroy(hudTextTip.gameObject);
 		if (hudSliderTime != null)
@@ -43,6 +48,8 @@ public class HudControl
 		Scheduler.RemoveSchedule(sliderTimeAction);
 		if (hudTextName != null)
 			hudTextName.gameObject.SetActive(true);
+		if (hutTextScore != null)
+			hutTextScore.gameObject.SetActive(true);
 		if (hudTextTip != null)
 			hudTextTip.gameObject.SetActive(true);
 		if (hudSliderTime != null)
@@ -55,6 +62,8 @@ public class HudControl
 	{
 		if (hudTextName != null)
 			hudTextName.gameObject.SetActive(false);
+		if (hutTextScore != null)
+			hutTextScore.gameObject.SetActive(true);
 		if (hudTextTip != null)
 			hudTextTip.gameObject.SetActive(false);
 		if (hudSliderTime != null)
@@ -73,6 +82,17 @@ public class HudControl
         }
 		hudTextName.SetText(name);
     }
+
+	public void CreateHudScore(int score)
+	{
+		if (hutTextScore == null)
+		{
+			string _path = "prefabs/uis/p_hud_name";
+			hutTextScore = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SCORE_OFFSET) as HudLabel;
+			UIMgr.instance.SetHudVisible(true, false);
+		}
+		hutTextScore.SetText(score.ToString());
+	}
 
 	public void ShoweHudTip(string tip)
 	{
@@ -110,7 +130,7 @@ public class HudControl
 			if (hudSliderTime == null)
 	        {
 	            string _path = "prefabs/uis/p_hud_time_slider";
-				hudSliderTime = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET + 10) as HudSlider;
+				hudSliderTime = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET) as HudSlider;
 	            UIMgr.instance.SetHudVisible(true, false);
 	        }
 			hudSliderTime.SetValue(start / max);
@@ -145,7 +165,7 @@ public class HudControl
 		if (hudSliderEnergy == null)
 		{
 			string _path = "prefabs/uis/p_hud_time_slider";
-			hudSliderEnergy = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SLIDER_OFFSET) as HudSlider;
+			hudSliderEnergy = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, ENERGY_OFFSET) as HudSlider;
 			UIMgr.instance.SetHudVisible(true, false);
 		}
 		hudSliderEnergy.SetValue(start / max);

@@ -28,6 +28,8 @@ public class SignPanel : PanelBase
 
 	void FixedUpdate()
 	{
+		if (owner == null)
+			return;
 		Vector3 pos = Camera.main.WorldToScreenPoint(owner.transform.position);
 		pos.z = 0;
 		pos = UIMgr.instance.uiCamera.transform.InverseTransformPoint(UIMgr.instance.uiCamera.ScreenToWorldPoint(pos));

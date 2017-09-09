@@ -24,11 +24,8 @@ public class Coin : NetworkBehaviour
 	const int BIG_COIN_SCORE = 4;
 	const int SMALL_COIN_SCORE = 1;
 
-	private Renderer renderer;
-
 	void Start()
 	{
-		renderer = GetComponentInChildren<Renderer>();
 		if (isClient)
 			gameObject.AddMissingComponent<SightController>();
 	}

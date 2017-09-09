@@ -114,6 +114,7 @@ public class TestController : NetworkBehaviour
 			hudControl = new HudControl();
 			hudControl.Init(thisTransform);
 			hudControl.CreateHudName(playerName);
+			hudControl.CreateHudScore(this.score);
 		}
 		if (isLocalPlayer)
 		{
@@ -474,6 +475,7 @@ public class TestController : NetworkBehaviour
 			hudControl.ShoweHudTip("+" + delta);
 			EventMgr.instance.TriggerEvent<int, int>("AddScore", score, delta);
 		}
+		hudControl.CreateHudScore(this.score);
 	}
 
 	private void OnSightRange(float range)
@@ -630,8 +632,14 @@ public class TestController : NetworkBehaviour
 	[ClientRpc]
 	public void RpcBeCaught(string casterName, string reciverName, int score)
 	{
-		string tip = string.Concat("[FF0000]", casterName, "[-]玩家撕掉了[FF0000]", reciverName, "[-]玩家的名牌", "获得[FF0000]", score, "分[-]");
+		string tip = string.Concat("[FF0000]", casterName, "[-]撕掉了[FF0000]", reciverName, "[-]的名牌", "获得[FF0000]", score, "分[-]");
 		UIMgr.instance.ShowTipString(tip);
+	}
+
+	[ClientRpc]
+	public void RpcLeftTime(float leftTime)
+	{
+		RoundMgr.instance.Start(leftTime);
 	}
 
 	public override void OnStartLocalPlayer()
@@ -641,6 +649,13 @@ public class TestController : NetworkBehaviour
 			playerName = Game.inputName;
 		else
 			CmdPlayerName(Game.inputName);
+	}
+
+	public override void OnStartServer()
+	{
+		base.OnStartServer();
+		if (!hasAuthority)
+			RpcLeftTime(RoundMgr.instance.leftTime);
 	}
 
 	public void GetInSight()
@@ -689,6 +704,7 @@ public class TestController : NetworkBehaviour
 
 	void OnDestroy()
 	{
+		EventMgr.instance.RemoveListener(this);
 		RipMgr.instance.RemoveTarget(gameObject);
 		if (hudControl != null)
 			hudControl.Release();
