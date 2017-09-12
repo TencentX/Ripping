@@ -439,9 +439,11 @@ public class TestController : NetworkBehaviour
 		}
 		model.SetActive(!hideInfo.hide);
 		if (!hideInfo.hide && sightController.InSight)
-			hudControl.Show();
+			if (hudControl != null)
+				hudControl.Show();
 		else
-			hudControl.Hide();
+			if (hudControl != null)
+				hudControl.Hide();
 		if (isLocalPlayer)
 			EventMgr.instance.TriggerEvent<bool>("SwitchHide", hideInfo.hide);
 	}
@@ -471,6 +473,7 @@ public class TestController : NetworkBehaviour
 		if (isLocalPlayer && outputCaught)
 		{
 			hudControl.HideSliderTime();
+			UIMgr.instance.CreatePanel("p_ui_relive_panel");
 		}
 	}
 
@@ -480,10 +483,12 @@ public class TestController : NetworkBehaviour
 		this.score = score;
 		if (isLocalPlayer && delta != 0)
 		{
-			hudControl.ShoweHudTip("+" + delta);
+			if (hudControl != null)
+				hudControl.ShoweHudTip("+" + delta);
 			EventMgr.instance.TriggerEvent<int, int>("AddScore", score, delta);
 		}
-		hudControl.CreateHudScore(this.score);
+		if (hudControl != null)
+			hudControl.CreateHudScore(this.score);
 	}
 
 	private void OnSightRange(float range)
@@ -604,6 +609,8 @@ public class TestController : NetworkBehaviour
 
 	void OnControllerColliderHit(ControllerColliderHit hit)
 	{
+		if (!hasAuthority)
+			return;
 		TestController player = hit.gameObject.GetComponent<TestController>();
 		if (player == null)
 			return;
@@ -630,7 +637,7 @@ public class TestController : NetworkBehaviour
 			// 一段时间后复活玩家
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
 			inputRun = false;
-		}, 0f, 0f, 1f);
+		}, 0f, 0f, RelivePanel.RELIVE_TIME);
 		// 通知所有玩家
 		RpcBeCaught(playerName, player.playerName, half);
 	}
@@ -716,7 +723,7 @@ public class TestController : NetworkBehaviour
 		animate.Play("cry");
 		Scheduler.Create(this, (sche, t, s) => {
 			outputCaught = false;
-		}, 0f, 0f, 1f);
+		}, 0f, 0f, RelivePanel.RELIVE_TIME);
 	}
 	#endregion 玩家状态
 
