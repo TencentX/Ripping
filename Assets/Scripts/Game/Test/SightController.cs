@@ -36,6 +36,14 @@ public class SightController : MonoBehaviour
 		gameObject.SendMessage("OutOfSight", SendMessageOptions.DontRequireReceiver);
 	}
 
+	public bool InSight
+	{
+		get
+		{
+			return lastVisible;
+		}
+	}
+
 	void OnDestroy()
 	{
 		SightMgr.instance.RemoveTarget(this);

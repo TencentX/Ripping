@@ -10,25 +10,9 @@ using System.Collections.Generic;
 public class Game : MonoBehaviour
 {
 	/// <summary>
-	/// 房间按钮
-	/// </summary>
-	public Button host;
-	public Button client;
-
-	/// <summary>
 	/// 我的ip
 	/// </summary>
 	public Text myIp;
-
-	/// <summary>
-	/// ip输入框
-	/// </summary>
-	public InputField input;
-
-	/// <summary>
-	/// 昵称输入框
-	/// </summary>
-	public InputField playerName;
 
 	/// <summary>
 	/// 蹦跑按钮
@@ -60,15 +44,8 @@ public class Game : MonoBehaviour
 	/// </summary>
 	public Text countDownTime;
 
-	/// <summary>
-	/// 一局总时间
-	/// </summary>
-	public const float ONE_GAME_TIME = 600f;
-
 	// 出生点
 	private List<Transform> bornPoses = new List<Transform>();
-
-	public static string inputName = "";
 
 	void Start()
 	{
@@ -85,6 +62,8 @@ public class Game : MonoBehaviour
 		myIp.text = Network.player.ipAddress;
 		lookBoxBtn.gameObject.SetActive(false);
 		outBoxBtn.gameObject.SetActive(false);
+		Canvas canvas = GameObject.FindObjectOfType<Canvas>();
+		canvas.gameObject.SetActive(false);
 		BoxMgr.instance.Init();
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
@@ -94,9 +73,11 @@ public class Game : MonoBehaviour
 		EventMgr.instance.AddListener<float>("RefreshRunTime", OnRunTimeRefresh);
 		EventMgr.instance.AddListener<int, int>("AddScore", OnAddScore);
 		EventMgr.instance.AddListener<bool>("CloseToBox", OnCloseToBox);
-		playerName.onValueChanged.AddListener(delegate {OnPlayerNameChange();});
 		NickNameMgr.instance.Init();
-		playerName.text = NickNameMgr.instance.GetRandomName();
+		PanelBase loginPanel = UIMgr.instance.GetOrCreatePanel("p_ui_login_panel");
+		GameObject resultPanel = UIMgr.instance.GetPanel("p_ui_result_panel");
+		if (resultPanel != null)
+			loginPanel.gameObject.SetActive(false);
 	}
 
 	void Update()
@@ -120,18 +101,16 @@ public class Game : MonoBehaviour
 
 	private void OnClientConnect(string gameEvent)
 	{
-		host.gameObject.SetActive(false);
-		client.gameObject.SetActive(false);
-		input.gameObject.SetActive(false);
-		playerName.gameObject.SetActive(false);
+		Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
+		foreach (Canvas canvas in canvases)
+			canvas.gameObject.SetActive(true);
 	}
 
 	private void OnClientDisconnect(string gameEvent)
 	{
-		host.gameObject.SetActive(true);
-		client.gameObject.SetActive(true);
-		input.gameObject.SetActive(true);
-		playerName.gameObject.SetActive(true);
+		Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
+		foreach (Canvas canvas in canvases)
+			canvas.gameObject.SetActive(false);
 	}
 
 	private void OnRunTimeRefresh(string gameEvent, float runTime)
@@ -147,42 +126,6 @@ public class Game : MonoBehaviour
 	private void OnCloseToBox(string gameEvent, bool close)
 	{
 		lookBoxBtn.gameObject.SetActive(close);
-	}
-
-	private void OnPlayerNameChange()
-	{
-		inputName = playerName.text;
-	}
-
-	/// <summary>
-	/// 创建主机
-	/// </summary>
-	public void OnClickHost()
-	{
-		if (string.IsNullOrEmpty(inputName))
-		{
-			UIMgr.instance.ShowTipString("昵称不能为空！");
-			return;
-		}
-		if (NetManager.singleton.StartHost() != null && NetworkServer.active)
-		{
-			CoinMgr.instance.Init();
-			RoundMgr.instance.Start();
-		}
-	}
-
-	/// <summary>
-	/// 连接客户端
-	/// </summary>
-	public void OnClickClient()
-	{
-		if (string.IsNullOrEmpty(inputName))
-		{
-			UIMgr.instance.ShowTipString("昵称不能为空！");
-			return;
-		}
-		NetManager.singleton.networkAddress = input.text;
-		NetManager.singleton.StartClient();
 	}
 
 	/// <summary>
@@ -205,6 +148,9 @@ public class Game : MonoBehaviour
 		EventMgr.instance.TriggerEvent("jumpPress");
 	}
 
+	/// <summary>
+	/// 箱子按钮
+	/// </summary>
 	public void OnBox()
 	{
 		EventMgr.instance.TriggerEvent("boxPress");

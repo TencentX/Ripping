@@ -87,7 +87,9 @@ public class TestController : NetworkBehaviour
 	[SyncVar(hook = "OnCaught")]
 	private bool outputCaught = false;
 	[SyncVar(hook = "OnScore")]
-	private int score = 0;
+	public int score = 0;
+
+	public static TestController mySelf;
 
 	void Awake()
 	{
@@ -304,6 +306,8 @@ public class TestController : NetworkBehaviour
 	void CmdPlayerName(string name)
 	{
 		playerName = name;
+		if (hasAuthority)
+			EventMgr.instance.TriggerEvent<NetworkInstanceId>("RefreshScore", netId);
 	}
 	#endregion
 
@@ -434,6 +438,10 @@ public class TestController : NetworkBehaviour
 			}
 		}
 		model.SetActive(!hideInfo.hide);
+		if (!hideInfo.hide && sightController.InSight)
+			hudControl.Show();
+		else
+			hudControl.Hide();
 		if (isLocalPlayer)
 			EventMgr.instance.TriggerEvent<bool>("SwitchHide", hideInfo.hide);
 	}
@@ -557,6 +565,9 @@ public class TestController : NetworkBehaviour
 
 	private void OnBoxPress(string gameEvent)
 	{
+		Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
+		if (box == null)
+			return;
 		System.Action callback;
 		if (this.hideInfo.hide)
 		{
@@ -572,13 +583,15 @@ public class TestController : NetworkBehaviour
 		else
 		{
 			// 不处于躲藏状态，翻看箱子
+			SignPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_sign_panel") as SignPanel;
+			if (panel != null)
+				panel.gameObject.SetActive(false);
 			openingBox = true;
 			callback = () =>
 			{
 				openingBox = false;
-				Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
-				if (box == null)
-					return;
+				if (panel != null)
+					panel.gameObject.SetActive(true);
 				if (hasAuthority)
 					InjectLook(box.id);
 				else
@@ -627,40 +640,45 @@ public class TestController : NetworkBehaviour
 		sightRange += score * 0.1f;
 		runEnergy += 0.1f;
 		this.score += score;
+		if (hasAuthority)
+			EventMgr.instance.TriggerEvent<NetworkInstanceId>("RefreshScore", netId);
 	}
 
 	[ClientRpc]
 	public void RpcBeCaught(string casterName, string reciverName, int score)
 	{
-		string tip = string.Concat("[FF0000]", casterName, "[-]撕掉了[FF0000]", reciverName, "[-]的名牌", "获得[FF0000]", score, "分[-]");
+		string tip = string.Concat("[FFFF00]", casterName, "[-]撕掉了[FFFF00]", reciverName, "[-]的名牌，", "获得[FFFF00]", score, "分[-]");
 		UIMgr.instance.ShowTipString(tip);
-	}
-
-	[ClientRpc]
-	public void RpcLeftTime(float leftTime)
-	{
-		RoundMgr.instance.Start(leftTime);
 	}
 
 	public override void OnStartLocalPlayer()
 	{
 		base.OnStartLocalPlayer();
 		if (hasAuthority)
-			playerName = Game.inputName;
+		{
+			playerName = LoginPanel.inputName;
+			EventMgr.instance.TriggerEvent<NetworkInstanceId>("RefreshScore", netId);
+		}
 		else
-			CmdPlayerName(Game.inputName);
+		{
+			CmdPlayerName(LoginPanel.inputName);
+		}
+		mySelf = this;
 	}
 
-	public override void OnStartServer()
+	public override void OnNetworkDestroy ()
 	{
-		base.OnStartServer();
-		if (!hasAuthority)
-			RpcLeftTime(RoundMgr.instance.leftTime);
+		base.OnNetworkDestroy ();
+		if (hasAuthority)
+		{
+			EventMgr.instance.TriggerEvent<NetworkInstanceId>("NetworkDestroy", netId);
+		}
 	}
 
 	public void GetInSight()
 	{
-		hudControl.Show();
+		if (!hideInfo.hide)
+			hudControl.Show();
 	}
 	
 	public void OutOfSight()
@@ -704,6 +722,7 @@ public class TestController : NetworkBehaviour
 
 	void OnDestroy()
 	{
+		mySelf = null;
 		EventMgr.instance.RemoveListener(this);
 		RipMgr.instance.RemoveTarget(gameObject);
 		if (hudControl != null)

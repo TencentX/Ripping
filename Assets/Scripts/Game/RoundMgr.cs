@@ -6,69 +6,79 @@ using System.Collections.ObjectModel;
 /// <summary>
 /// 回合管理器
 /// </summary>
-public class RoundMgr : Singleton<RoundMgr>
+public class RoundMgr : NetworkBehaviour
 {
+	public static RoundMgr instance;
+
 	// 剩余时间
+	[SyncVar]
 	private float totalTime;
 
 	// 开始时间
+	[SyncVar]
 	private float startTime;
 
-	// 是否正在游戏
-	private bool isPlaying = false;
+	// 上次同步时间
+	private float lastSyncTime = 0f;
 
-	// 回合管理对象
-	private GameObject go;
+	// 时间差
+	private float deltaTime = 0;
 
 	/// <summary>
 	/// 一局的时间
 	/// </summary>
 	public const float ONE_ROUND_TIME = 600f;
 
-	class Round : MonoBehaviour
+	void Awake()
 	{
-		void Update()
-		{
-			RoundMgr.instance.Update();
-		}
+		instance = this;
 	}
 
-	public void Start()
+	void OnDestroy()
+	{
+		instance = null;
+	}
+
+	void Start()
 	{
 		totalTime = ONE_ROUND_TIME;
 		startTime = Time.realtimeSinceStartup;
-		isPlaying = true;
-		go = GameObject.Find("RoundMgr");
-		if (go == null)
-			go = new GameObject("RoundMgr");
-		go.AddMissingComponent<Round>();
 	}
 
-	public void Start(float leftTime)
+	void Update()
 	{
-		totalTime = leftTime;
+		if (!isServer)
+			return;
+		float now = Time.realtimeSinceStartup;
+		if (now - lastSyncTime > 1.0f)
+		{
+			// 没1s同步一次剩余时间
+			lastSyncTime = now;
+			RpcSetLeftTime(lastSyncTime);
+		}
+		if (leftTime <= 0)
+			End();
 	}
 
-	public void End()
+	void End()
 	{
-		isPlaying = false;
-//		NetworkServer.DisconnectAll();
 		NetManager.singleton.StopHost();
 	}
 
-	public void Update()
+	[ClientRpc]
+	void RpcSetLeftTime(float currentTime)
 	{
-		if (!isPlaying)
-			return;
-		if (leftTime <= 0)
-			End();
+		if (!hasAuthority)
+		{
+			deltaTime = Time.realtimeSinceStartup - currentTime;
+		}
 	}
 
 	public float leftTime
 	{
 		get
 		{
-			return Mathf.Max(totalTime - (Time.realtimeSinceStartup - startTime), 0);
+			return Mathf.Max(totalTime - (Time.realtimeSinceStartup - deltaTime - startTime), 0);
 		}
 	}
 }

@@ -63,7 +63,7 @@ public class HudControl
 		if (hudTextName != null)
 			hudTextName.gameObject.SetActive(false);
 		if (hutTextScore != null)
-			hutTextScore.gameObject.SetActive(true);
+			hutTextScore.gameObject.SetActive(false);
 		if (hudTextTip != null)
 			hudTextTip.gameObject.SetActive(false);
 		if (hudSliderTime != null)
@@ -164,7 +164,7 @@ public class HudControl
 	{
 		if (hudSliderEnergy == null)
 		{
-			string _path = "prefabs/uis/p_hud_time_slider";
+			string _path = "prefabs/uis/p_hud_energy_slider";
 			hudSliderEnergy = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, ENERGY_OFFSET) as HudSlider;
 			UIMgr.instance.SetHudVisible(true, false);
 		}

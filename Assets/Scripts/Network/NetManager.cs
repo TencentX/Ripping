@@ -19,6 +19,13 @@ public class NetManager : NetworkManager
 		base.OnClientDisconnect(conn);
 		EventMgr.instance.TriggerEvent("OnClientDisconnect");
 	}
+
+	public override void OnStopClient ()
+	{
+		base.OnStopClient ();
+		NetManager.singleton.ServerChangeScene(offlineScene);
+		UIMgr.instance.CreatePanel("p_ui_result_panel");
+	}
 	#endregion client
 
 	#region server

@@ -570,7 +570,7 @@ public class UIMgr : Singleton<UIMgr>
         return uiPos;
     }
 
-	public FloatingTipPanel ShowTipString(string msg, float exitSec = 1.5f)
+	public FloatingTipPanel ShowTipString(string msg, float exitSec = 3f)
 	{
 		if (string.IsNullOrEmpty(msg))
 			return null;

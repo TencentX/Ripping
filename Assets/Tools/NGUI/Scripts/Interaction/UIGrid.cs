@@ -174,7 +174,8 @@ public class UIGrid : UIWidgetContainer
 		if (trans != null)
 		{
 			trans.parent = transform;
-			ResetPosition(GetChildList());
+			if (sort)
+				ResetPosition(GetChildList());
 		}
 	}
 
