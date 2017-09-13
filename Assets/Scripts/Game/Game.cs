@@ -155,4 +155,31 @@ public class Game : MonoBehaviour
 	{
 		EventMgr.instance.TriggerEvent("boxPress");
 	}
+
+	/// <summary>
+	/// 帮助
+	/// </summary>
+	public void OnHelp()
+	{
+		UIMgr.instance.CreatePanel("p_ui_help_panel");
+	}
+
+	/// <summary>
+	/// 退出
+	/// </summary>
+	public void OnClose()
+	{
+		if (TestController.mySelf == null)
+			return;
+		if (TestController.mySelf.isServer)
+		{
+			NetManager.singleton.StopHost();
+			return;
+		}
+		if (TestController.mySelf.isClient)
+		{
+			NetManager.singleton.StopClient();
+			return;
+		}
+	}
 }

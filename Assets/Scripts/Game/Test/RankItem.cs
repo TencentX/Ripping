@@ -30,5 +30,13 @@ public class RankItem : MonoBehaviour
 		this.rank.text = (rankInfo.rank + 1).ToString();
 		this.nameLabel.text = rankInfo.name;
 		this.score.text = rankInfo.score.ToString();
+		if (TestController.mySelf != null && rankInfo.id == TestController.mySelf.netId.Value)
+		{
+			this.rank.color = this.nameLabel.color = this.score.color = Color.yellow;
+		}
+		else
+		{
+			this.rank.color = this.nameLabel.color = this.score.color = Color.white;
+		}
 	}
 }
