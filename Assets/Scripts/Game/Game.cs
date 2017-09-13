@@ -20,6 +20,11 @@ public class Game : MonoBehaviour
 	public Button runBtn;
 
 	/// <summary>
+	/// The catch button.
+	/// </summary>
+	public Button catchBtn;
+
+	/// <summary>
 	/// 查看箱子
 	/// </summary>
 	public Button lookBoxBtn;
@@ -67,6 +72,8 @@ public class Game : MonoBehaviour
 		BoxMgr.instance.Init();
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
+		EventTriggerListener.Get(catchBtn.gameObject).onDown = OnDownCatch;
+		EventTriggerListener.Get(catchBtn.gameObject).onUp = OnUpCatch;
 		EventMgr.instance.AddListener<bool>("SwitchHide", OnSwitchHide);
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
 		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
@@ -143,9 +150,13 @@ public class Game : MonoBehaviour
 	/// <summary>
 	/// 撕名牌
 	/// </summary>
-	public void OnCatch()
+	public void OnDownCatch(GameObject go)
 	{
-		EventMgr.instance.TriggerEvent("jumpPress");
+		EventMgr.instance.TriggerEvent<bool>("catchPress", true);
+	}
+	public void OnUpCatch(GameObject go)
+	{
+		EventMgr.instance.TriggerEvent<bool>("catchPress", false);
 	}
 
 	/// <summary>

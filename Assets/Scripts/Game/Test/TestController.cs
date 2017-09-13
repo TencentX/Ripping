@@ -55,6 +55,8 @@ public class TestController : NetworkBehaviour
 	Transform thisTransform;
 	HudControl hudControl;
 	SightController sightController;
+	GameObject quan;
+	GameObject ripArea;
 
 	// 目标朝向
 	private Quaternion targetRotation;
@@ -99,6 +101,8 @@ public class TestController : NetworkBehaviour
 		animate = GetComponentInChildren<Animation>();
 		sight = GetComponentInChildren<Light>();
 		model = transform.Find("Actormodel").gameObject;
+		quan = model.transform.Find("Quan").gameObject;
+		ripArea = model.transform.Find("Area").gameObject;
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Idle, EnterIdle);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Move, EnterMove);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Run, EnterRun);
@@ -123,10 +127,12 @@ public class TestController : NetworkBehaviour
 			sight.enabled = true;
 			sight.range = sightRange;
 			sight.spotAngle = sightAngle;
+			quan.SetActive(true);
+			ripArea.SetActive(false);
 			EventMgr.instance.TriggerEvent("beginProcessInput");
 			EventMgr.instance.AddListener<Vector3>("joystickMove", OnMove);
 			EventMgr.instance.AddListener("joystickStop", OnStop);
-			EventMgr.instance.AddListener("jumpPress", OnJumpPress);
+			EventMgr.instance.AddListener<bool>("catchPress", OnCatchPress);
 			EventMgr.instance.AddListener<bool>("runPress", OnRunPress);
 			EventMgr.instance.AddListener<GameObject>("OnSignPress", OnSignPress);
 			EventMgr.instance.AddListener("boxPress", OnBoxPress);
@@ -134,6 +140,8 @@ public class TestController : NetworkBehaviour
 		else
 		{
 			sight.enabled = false;
+			quan.SetActive(false);
+			ripArea.SetActive(false);
 		}
 		leftRunEnergy = runEnergy;
 		if (hasAuthority)
@@ -426,6 +434,7 @@ public class TestController : NetworkBehaviour
 			Box box = BoxMgr.instance.GetBox(hideInfo.id);
 			if (box != null)
 			{
+				box.Open();
 				if (hideInfo.hide)
 				{
 					thisTransform.position = box.transform.position;
@@ -529,12 +538,22 @@ public class TestController : NetworkBehaviour
 			CmdStop();
 	}
 
-	private void OnJumpPress(string gameEvent)
+	private void OnCatchPress(string gameEvent, bool pressed)
 	{
-		if (hasAuthority)
-			InjectCatch();
+		if (!pressed)
+		{
+			// 撕
+			ripArea.SetActive(false);
+			if (hasAuthority)
+				InjectCatch();
+			else
+				CmdCatch();
+		}
 		else
-			CmdCatch();
+		{
+			// 提示撕扯范围
+			ripArea.SetActive(true);
+		}
 	}
 
 	private void OnRunPress(string gameEvent, bool pressed)
@@ -555,6 +574,7 @@ public class TestController : NetworkBehaviour
 			Box box = go.GetComponent<Box>();
 			if (box != null)
 			{
+				box.Open();
 				HideInfo hideInfo;
 				hideInfo.hide = true;
 				hideInfo.id = box.id;
@@ -577,6 +597,7 @@ public class TestController : NetworkBehaviour
 		if (this.hideInfo.hide)
 		{
 			// 处于躲藏状态，跳出箱子
+			box.Open();
 			HideInfo hideInfo;
 			hideInfo.hide = false;
 			hideInfo.id = this.hideInfo.id;
@@ -594,6 +615,7 @@ public class TestController : NetworkBehaviour
 			openingBox = true;
 			callback = () =>
 			{
+				box.Open();
 				openingBox = false;
 				if (panel != null)
 					panel.gameObject.SetActive(true);

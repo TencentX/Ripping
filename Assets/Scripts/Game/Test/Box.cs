@@ -17,8 +17,16 @@ public class Box : MonoBehaviour
 	/// </summary>
 	public Transform outTransform;
 
+	// 动画
+	private Animation ani;
+
 	// 隐藏的玩家
 	private TestController player;
+
+	void Awake()
+	{
+		ani = GetComponentInChildren<Animation>();
+	}
 
 	public void OnTriggerEnter(Collider collider)
 	{
@@ -54,6 +62,12 @@ public class Box : MonoBehaviour
 	public TestController GetHider()
 	{
 		return player;
+	}
+
+	[ContextMenu("Open")]
+	public void Open()
+	{
+		ani.Play("hide");
 	}
 
 	public Vector3 GetOutPos()
