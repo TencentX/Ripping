@@ -743,7 +743,7 @@ public class TestController : NetworkBehaviour
 
 	private void EnterCaught()
 	{
-		animate.Play("push_&end");
+		animate.Play("push&end");
 		Scheduler.Create(this, (sche, t, s) => {
 			outputCaught = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
