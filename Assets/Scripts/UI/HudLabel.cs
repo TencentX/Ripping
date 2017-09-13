@@ -30,7 +30,7 @@ public class HudLabel : HudBase
     {
         if (label != null)
         {
-            label.gameObject.SetActive(vis);
+            label.enabled = vis;
         }
     }
 
