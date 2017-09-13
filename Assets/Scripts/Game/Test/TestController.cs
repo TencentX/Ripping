@@ -724,7 +724,8 @@ public class TestController : NetworkBehaviour
 
 	private void EnterMove()
 	{
-		animate.CrossFade("run");
+		animate["walk"].speed = 1.5f;
+		animate.CrossFade("walk");
 	}
 
 	private void EnterRun()
@@ -734,7 +735,7 @@ public class TestController : NetworkBehaviour
 
 	private void EnterCatch()
 	{
-		animate.Play("out");
+		animate.Play("attack");
 		Scheduler.Create(this, (sche, t, s) => {
 			inputCatch = false;
 		}, 0f, 0f, 1f);
@@ -742,7 +743,7 @@ public class TestController : NetworkBehaviour
 
 	private void EnterCaught()
 	{
-		animate.Play("cry");
+		animate.Play("push_&end");
 		Scheduler.Create(this, (sche, t, s) => {
 			outputCaught = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);

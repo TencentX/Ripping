@@ -14,11 +14,12 @@ public class HudControl
 	private int tipFloatAction = -1;
 	private int sliderTimeAction = -1;
 
-	const float NAME_OFFSET = 30f;
-	const float SCORE_OFFSET = 50f;
-	const float TIP_OFFSET = 70f;
-	const float SLIDER_OFFSET = 60f;
-	const float ENERGY_OFFSET = 0f;
+	const float UNIFIED_OFFSET = 30f;
+	const float NAME_OFFSET = UNIFIED_OFFSET + 30f;
+	const float SCORE_OFFSET = UNIFIED_OFFSET + 50f;
+	const float TIP_OFFSET = UNIFIED_OFFSET + 70f;
+	const float SLIDER_OFFSET = UNIFIED_OFFSET + 60f;
+	const float ENERGY_OFFSET = UNIFIED_OFFSET + 0f;
 	const float TIP_TIME = 1.0f;
 	const float TIP_FLY_HEIGHT = 30f;
 
