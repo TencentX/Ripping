@@ -79,13 +79,13 @@ public class TestController : NetworkBehaviour
 	private bool inputCatch = false;
 	[SyncVar(hook = "OnRun")]
 	private bool inputRun = false;
-	struct HideInfo
+	public struct HideInfo
 	{
 		public bool hide;
 		public int id;
 	}
 	[SyncVar(hook = "OnHide")]
-	private HideInfo hideInfo;
+	public HideInfo hideInfo;
 	[SyncVar(hook = "OnCaught")]
 	private bool outputCaught = false;
 	[SyncVar(hook = "OnScore")]
@@ -231,7 +231,7 @@ public class TestController : NetworkBehaviour
 			if (hudControl != null)
 				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
 			// 计算视野
-			SightMgr.instance.Check(sightController, sightRange, sightAngle, ref targetsInSight, ref targetsOutSight);
+			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 2, ref targetsInSight, ref targetsOutSight);
 			for (int i = 0; i < targetsInSight.Count; i++)
 			{
 				targetsInSight[i].BecameVisible();
@@ -386,11 +386,11 @@ public class TestController : NetworkBehaviour
 			else
 			{
 				// 箱子里有人，则抓人
+				BeCaught(player);
 				HideInfo newhideInfo;
 				newhideInfo.hide = false;
 				newhideInfo.id = hideInfo.id;
 				player.InjectHide(newhideInfo);
-				BeCaught(player);
 			}
 		}
 		else
@@ -409,6 +409,8 @@ public class TestController : NetworkBehaviour
 			return;
 		TestController player = box.GetHider();
 		if (player == null)
+			return;
+		if (player.netId == netId)
 			return;
 		HideInfo hideInfo;
 		hideInfo.hide = false;
@@ -568,6 +570,8 @@ public class TestController : NetworkBehaviour
 	{
 		System.Action callback;
 		openingBox = true;
+		OnStop("");
+		EventMgr.instance.TriggerEvent<bool>("CloseToBox", false);
 		callback = () =>
 		{
 			openingBox = false;
@@ -609,16 +613,19 @@ public class TestController : NetworkBehaviour
 		else
 		{
 			// 不处于躲藏状态，翻看箱子
-			SignPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_sign_panel") as SignPanel;
+			GameObject panel = UIMgr.instance.GetPanel("p_ui_sign_panel");
 			if (panel != null)
-				panel.gameObject.SetActive(false);
+				panel.SetActive(false);
 			openingBox = true;
+			OnStop("");
 			callback = () =>
 			{
 				box.Open();
+				Scheduler.Create(this, (sche, t, s) => {
+					if (panel != null)
+						panel.SetActive(true);
+				}, 0f, 0f, 1.0f);
 				openingBox = false;
-				if (panel != null)
-					panel.gameObject.SetActive(true);
 				if (hasAuthority)
 					InjectLook(box.id);
 				else
@@ -676,7 +683,7 @@ public class TestController : NetworkBehaviour
 	[ClientRpc]
 	public void RpcBeCaught(string casterName, string reciverName, int score)
 	{
-		string tip = string.Concat("[FFFF00]", casterName, "[-]撕掉了[FFFF00]", reciverName, "[-]的名牌，", "获得[FFFF00]", score, "分[-]");
+		string tip = string.Concat("[FFFF00]", casterName, "[-]撕掉了[FFFF00]", reciverName, "[-]，", "获得[FFFF00]", score, "分[-]");
 		UIMgr.instance.ShowTipString(tip);
 	}
 

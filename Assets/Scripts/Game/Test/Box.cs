@@ -35,6 +35,9 @@ public class Box : MonoBehaviour
 		NetworkIdentity identity = collider.gameObject.GetComponent<NetworkIdentity>();
 		if (identity == null || !identity.isLocalPlayer)
 			return;
+		TestController player = collider.gameObject.GetComponent<TestController>();
+		if (player == null || player.hideInfo.hide)
+			return;
 		SignPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_sign_panel") as SignPanel;
 		panel.SetOwner(gameObject);
 		panel.gameObject.SetActive(true);

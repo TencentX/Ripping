@@ -26,19 +26,19 @@ public class SightMgr : Singleton<SightMgr>
 			targetList.Remove(controller);
 	}
 
-	public void Check(SightController center, float radius, float angle, ref List<SightController> targetsInSight, ref List<SightController> targetsOutSight)
+	public void Check(SightController center, float sightRange, float angle, float selfRadius, ref List<SightController> targetsInSight, ref List<SightController> targetsOutSight)
 	{
 		targetsInSight.Clear();
 		targetsOutSight.Clear();
 		for (int i = 0; i < targetList.Count; i++)
 		{
-			if (Check(center, radius, angle, targetList[i]))
+			if (Check(center, sightRange, angle, selfRadius, targetList[i]))
 				targetsInSight.Add(targetList[i]);
 			else
 				targetsOutSight.Add(targetList[i]);
 		}
 	}
-	public bool Check(SightController center, float radius, float angle, SightController checkTarget)
+	public bool Check(SightController center, float sightRange, float angle, float selfRadius, SightController checkTarget)
 	{
 		bool inSight = false;
 		// 坐标和朝向去除y坐标影响
@@ -51,10 +51,13 @@ public class SightMgr : Singleton<SightMgr>
 			return true;
 		Vector3 targetPos = checkTarget.transform.position;
 		targetPos.y = 0;
-		// 先判断是否相交
 		Vector3 delta = targetPos - pos;
+		// 与自身圆是否相交
+		if (Vector3.Distance(targetPos, pos) <= selfRadius)
+			return true;
+		// 与扇形圆是否相交
 		float distance = delta.magnitude;
-		if (distance >= radius)
+		if (distance >= sightRange)
 			return inSight;
 		// 判断方向与点的夹角是否大于angle的一半
 		if (Vector3.Angle(forward, delta) > angle / 2)

@@ -16,9 +16,9 @@ public class HudControl
 
 	const float UNIFIED_OFFSET = 30f;
 	const float NAME_OFFSET = UNIFIED_OFFSET + 30f;
-	const float SCORE_OFFSET = UNIFIED_OFFSET + 50f;
-	const float TIP_OFFSET = UNIFIED_OFFSET + 70f;
-	const float SLIDER_OFFSET = UNIFIED_OFFSET + 60f;
+	const float SCORE_OFFSET = UNIFIED_OFFSET + 60f;
+	const float TIP_OFFSET = UNIFIED_OFFSET + 80f;
+	const float SLIDER_OFFSET = UNIFIED_OFFSET + 70f;
 	const float ENERGY_OFFSET = UNIFIED_OFFSET + 0f;
 	const float TIP_TIME = 1.0f;
 	const float TIP_FLY_HEIGHT = 30f;
@@ -88,7 +88,7 @@ public class HudControl
 	{
 		if (hutTextScore == null)
 		{
-			string _path = "prefabs/uis/p_hud_name";
+			string _path = "prefabs/uis/p_hud_score";
 			hutTextScore = UIMgr.instance.CreateHud(_path, Camera.main, hudAnchor, SCORE_OFFSET) as HudLabel;
 			UIMgr.instance.SetHudVisible(true, false);
 		}
