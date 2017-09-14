@@ -231,7 +231,7 @@ public class TestController : NetworkBehaviour
 			if (hudControl != null)
 				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
 			// 计算视野
-			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 2, ref targetsInSight, ref targetsOutSight);
+			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 3, ref targetsInSight, ref targetsOutSight);
 			for (int i = 0; i < targetsInSight.Count; i++)
 			{
 				targetsInSight[i].BecameVisible();
@@ -690,6 +690,7 @@ public class TestController : NetworkBehaviour
 	public override void OnStartLocalPlayer()
 	{
 		base.OnStartLocalPlayer();
+		mySelf = this;
 		if (hasAuthority)
 		{
 			playerName = LoginPanel.inputName;
@@ -699,7 +700,6 @@ public class TestController : NetworkBehaviour
 		{
 			CmdPlayerName(LoginPanel.inputName);
 		}
-		mySelf = this;
 	}
 
 	public override void OnNetworkDestroy ()
@@ -759,7 +759,8 @@ public class TestController : NetworkBehaviour
 
 	void OnDestroy()
 	{
-		mySelf = null;
+		if (isLocalPlayer)
+			mySelf = null;
 		EventMgr.instance.RemoveListener(this);
 		RipMgr.instance.RemoveTarget(gameObject);
 		if (hudControl != null)
