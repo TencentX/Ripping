@@ -34,8 +34,9 @@ public class NetManager : NetworkManager
 	public override void OnStopClient ()
 	{
 		base.OnStopClient ();
+		bool lastConnected = isClient;
 		isClient = false;
-		if (IsClientConnected())
+		if (lastConnected)
 		{
 			NetManager.singleton.ServerChangeScene(offlineScene);
 			UIMgr.instance.CreatePanel("p_ui_result_panel");

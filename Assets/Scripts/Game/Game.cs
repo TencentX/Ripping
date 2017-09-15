@@ -113,7 +113,10 @@ public class Game : MonoBehaviour
 		Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
 		foreach (Canvas canvas in canvases)
 			canvas.gameObject.SetActive(true);
-		myIp.transform.parent.gameObject.SetActive(NetManager.isServer);
+		if (NetManager.isServer)
+			myIp.text = Network.player.ipAddress;
+		else
+			myIp.text = NetManager.singleton.networkAddress;
 	}
 
 	private void OnClientDisconnect(string gameEvent)

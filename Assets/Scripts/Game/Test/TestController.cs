@@ -643,6 +643,8 @@ public class TestController : NetworkBehaviour
 		TestController player = hit.gameObject.GetComponent<TestController>();
 		if (player == null)
 			return;
+		if (player.outputCaught)
+			return;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, hit.gameObject, player.bodyRadius))
 		{
 			inputCatch = true;
@@ -666,6 +668,7 @@ public class TestController : NetworkBehaviour
 		player.outputCaught = true;
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
+			player.outputCaught = false;
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
 			inputRun = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
