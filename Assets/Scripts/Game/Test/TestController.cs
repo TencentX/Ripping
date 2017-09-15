@@ -17,7 +17,7 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	public float runEnergy = 3f;
 	const float CONSUME_SPEED = 1f;
-	const float RECOVER_SPEED = 0.5f;
+	const float RECOVER_SPEED = 0.4f;
 
 	[Tooltip("身体半径，撕扯检测用")]
 	[SyncVar]
