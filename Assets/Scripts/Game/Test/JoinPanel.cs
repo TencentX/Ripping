@@ -17,6 +17,9 @@ public class JoinPanel : PanelBase
 	/// </summary>
 	public UILabel ipText;
 
+	// 客户端
+	private NetworkClient client;
+
 	public void OnClickJoinBtn()
 	{
 		if (string.IsNullOrEmpty(LoginPanel.inputName))
@@ -24,23 +27,34 @@ public class JoinPanel : PanelBase
 			UIMgr.instance.ShowTipString("昵称不能为空！");
 			return;
 		}
-		NetManager.singleton.networkAddress = ipText.text;
-		NetworkClient client = NetManager.singleton.StartClient();
 		if (client != null)
 		{
-			Exit();
-			RankPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_rank_panel") as RankPanel;
-			panel.InitList();
+			UIMgr.instance.ShowTipString("正在连接主机，请稍后！");
+			return;
 		}
-		else
-		{
-			UIMgr.instance.ShowTipString("加入房间" + ipText.text + "失败!");
-		}
+		NetManager.singleton.networkAddress = ipText.text;
+		client = NetManager.singleton.StartClient();
+		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
+		EventMgr.instance.AddListener("OnClientDisconnect", OnClientError);
 	}
 
 	public void OnCloseBtnClick()
 	{
 		Exit();
 		UIMgr.instance.CreatePanel("p_ui_login_panel");
+	}
+
+	private void OnClientConnect(string gameEvent)
+	{
+		client = null;
+		Exit();
+		RankPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_rank_panel") as RankPanel;
+		panel.InitList();
+	}
+
+	private void OnClientError(string gameEvent)
+	{
+		client = null;
+		UIMgr.instance.ShowTipString("加入房间" + ipText.text + "失败!");
 	}
 }

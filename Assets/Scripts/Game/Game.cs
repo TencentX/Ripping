@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 游戏逻辑
@@ -54,6 +55,7 @@ public class Game : MonoBehaviour
 
 	void Start()
 	{
+		NetManager.networkSceneName = SceneManager.GetSceneAt(0).name;
 		GameDataMgr.instance.LoadAllData();
 		GameObject bornPos = GameObject.Find("BornPos");
 		for (int i = 0; i < bornPos.transform.childCount; i++)
@@ -111,6 +113,7 @@ public class Game : MonoBehaviour
 		Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
 		foreach (Canvas canvas in canvases)
 			canvas.gameObject.SetActive(true);
+		myIp.transform.parent.gameObject.SetActive(NetManager.isServer);
 	}
 
 	private void OnClientDisconnect(string gameEvent)

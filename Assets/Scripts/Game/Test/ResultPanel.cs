@@ -21,6 +21,7 @@ public class ResultPanel : PanelBase
 		int score = TestController.mySelf != null ? TestController.mySelf.score : 0;
 		this.score.text = "我的积分：" + score;
 		UIEventListener.Get(bg).onClick = OnBgClick;
+		UIMgr.instance.DestroyPanel("p_ui_help_panel");
 	}
 
 	void OnBgClick(GameObject go)

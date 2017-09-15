@@ -645,6 +645,8 @@ public class TestController : NetworkBehaviour
 			return;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, hit.gameObject, player.bodyRadius))
 		{
+			inputCatch = true;
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 			BeCaught(player);
 		}
 	}
@@ -658,7 +660,7 @@ public class TestController : NetworkBehaviour
 		int score = Mathf.Max(half, 1);
 		AddScore(score);
 		// 自己加能量
-		leftRunEnergy = Mathf.Min(leftRunEnergy + runEnergy * 0.3f, runEnergy);
+		leftRunEnergy = Mathf.Min(leftRunEnergy + runEnergy * 0.5f, runEnergy);
 		// 别人扣分
 		player.AddScore(-half);
 		player.outputCaught = true;
@@ -668,7 +670,7 @@ public class TestController : NetworkBehaviour
 			inputRun = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
 		// 通知所有玩家
-		RpcBeCaught(playerName, player.playerName, half);
+		RpcBeCaught(playerName, player.playerName, score);
 	}
 
 	public void AddScore(int score)

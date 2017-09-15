@@ -6,8 +6,21 @@ using System.Collections.Generic;
 /// <summary>
 /// 排名管理器
 /// </summary>
+public struct RankInfo
+{
+	public uint id;
+	public int rank;
+	public string name;
+	public int score;
+	public int modifyType;//1为增加，2为删除
+}
 public class RankMgr : NetworkBehaviour
 {
+	public class SyncListRankInfo : SyncListStruct<RankInfo>
+	{
+		
+	}
+
 	public static RankMgr instance;
 
 	private Dictionary<uint, RankInfo> rankDic = new Dictionary<uint, RankInfo>();
@@ -63,6 +76,7 @@ public class RankMgr : NetworkBehaviour
 			rankInfo.id = id.Value;
 			rankInfo.name = player.playerName;
 			rankInfo.score = player.score;
+			rankInfo.rank = 0;
 			rankDic.Add(rankInfo.id, rankInfo);
 		}
 		else
@@ -90,7 +104,7 @@ public class RankMgr : NetworkBehaviour
 	{
 		if (rankInfo.modifyType == 2)
 		{
-			int index = 0;
+			int index = -1;
 			for (int i = 0; i < rankInfos.Count; i++)
 			{
 				if (rankInfos[i].id == rankInfo.id)
@@ -102,23 +116,40 @@ public class RankMgr : NetworkBehaviour
 					break;
 				}
 			}
-			for (int i = index + 1; i < rankInfos.Count; i++)
+			if (index != -1)
 			{
-				RankInfo info = rankInfos[i];
-				info.rank = info.rank - 1;
-				rankInfos.Dirty(i);
+				for (int i = index; i < rankInfos.Count; i++)
+				{
+					RankInfo info = rankInfos[i];
+					info.rank = i;
+					rankInfos.Dirty(i);
+				}
 			}
 			FillChangeRankInfo();
 		}
 		else if (rankInfos.Count > 0)
 		{
+			// 删除重复排名
+			for (int i = 0; i < rankInfos.Count; i++)
+			{
+				RankInfo info = rankInfos[i];
+				if (info.id == rankInfo.id)
+				{
+					info.modifyType = 2;
+					rankInfos.RemoveAt(i);
+					if (rankKey.ContainsKey(info.id))
+						rankKey.Remove(info.id);
+					break;
+				}
+			}
+			// 插入新的分数
 			int index = -1;
 			for (int i = 0; i < rankInfos.Count; i++)
 			{
 				RankInfo info = rankInfos[i];
 				if (info.score < rankInfo.score)
 				{
-					rankInfo.rank = info.rank;
+					rankInfo.rank = i;
 					rankInfo.modifyType = 1;
 					rankInfos.Insert(i, rankInfo);
 					if (!rankKey.ContainsKey(rankInfo.id))
@@ -126,47 +157,32 @@ public class RankMgr : NetworkBehaviour
 					index = i;
 					break;
 				}
+				info.rank = i;
 			}
 			if (index != -1)
 			{
-				// 插入了新的排名
+				// 插入的分数在中间，修改后面的值
 				for (int i = index + 1; i < rankInfos.Count; i++)
 				{
+					// 使用rankInfos.Dirty无法达到更新的目的，故新建RankInfo
 					RankInfo info = rankInfos[i];
-					info.rank = info.rank + 1;
-					rankInfos.Dirty(i);
+					RankInfo newinfo = new RankInfo();
+					newinfo.id = info.id;
+					newinfo.modifyType = newinfo.modifyType;
+					newinfo.name = info.name;
+					newinfo.rank = i;
+					newinfo.score = info.score;
+					rankInfos[i] = newinfo;
 				}
-				// 移除重复的变化值
-				index = -1;
-				for (int i = rankInfos.Count - 1; i >= 0; i--)
-				{
-					RankInfo info = rankInfos[i];
-					if (info.id == rankInfo.id)
-					{
-						info.modifyType = 2;
-						rankInfos.RemoveAt(i);
-						index = i;
-						if (rankKey.Count != rankInfos.Count)
-						{
-							var a = 1;
-						}
-						break;
-					}
-				}
-				if (index != -1)
-				{
-					// 删除了排名
-					for (int i = index; i < rankInfos.Count; i++)
-					{
-						RankInfo info = rankInfos[i];
-						info.rank = info.rank + 1;
-						rankInfos.Dirty(i);
-					}
-					if (rankKey.Count != rankInfos.Count)
-					{
-						var a = 1;
-					}
-				}
+			}
+			else if (rankInfos.Count < RANK_NUM)
+			{
+				// 如果列表较小，插入到后面
+				rankInfo.rank = rankInfos.Count;
+				rankInfo.modifyType = 1;
+				rankInfos.Add(rankInfo);
+				if (!rankKey.ContainsKey(rankInfo.id))
+					rankKey.Add(rankInfo.id, true);
 			}
 			if (rankInfos.Count > RANK_NUM)
 			{
@@ -222,17 +238,4 @@ public class RankMgr : NetworkBehaviour
 		instance = null;
 		EventMgr.instance.RemoveListener(this);
 	}
-}
-
-public struct RankInfo
-{
-	public uint id;
-	public int rank;
-	public string name;
-	public int score;
-	public int modifyType;//1为增加，2为删除
-}
-public class SyncListRankInfo : SyncListStruct<RankInfo>
-{
-	
 }

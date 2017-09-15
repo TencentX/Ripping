@@ -22,12 +22,17 @@ public class LoginPanel : PanelBase
 	/// </summary>
 	public UILabel nameText;
 
+	const string PLAYER_NAME = "player_name";
+
 	public static string inputName = "";
 
 	protected override void Init (GameObject obj)
 	{
-		nameText.text = NickNameMgr.instance.GetRandomName();
-		OnNameChange();
+		if (PlayerPrefs.HasKey(PLAYER_NAME))
+			inputName = PlayerPrefs.GetString(PLAYER_NAME);
+		else
+			inputName = NickNameMgr.instance.GetRandomName();
+		nameText.text = inputName;
 	}
 
 	public void OnClickCreateBtn()
@@ -40,12 +45,15 @@ public class LoginPanel : PanelBase
 		if (NetManager.singleton.StartHost() != null && NetworkServer.active)
 		{
 			CoinMgr.instance.Init();
-//			GameObject rank = GameObject.Instantiate(NetManager.singleton.spawnPrefabs[2]);
-//			NetworkServer.Spawn(rank);
 			RankPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_rank_panel") as RankPanel;
 			panel.InitList();
+			PlayerPrefs.SetString(PLAYER_NAME, inputName);
+			Exit();
 		}
-		Exit();
+		else
+		{
+			UIMgr.instance.ShowTipString("创建主机失败!");
+		}
 	}
 
 	public void OnClickJoinBtn()

@@ -42,7 +42,8 @@ public class RoundMgr : NetworkBehaviour
 	void Start()
 	{
 		totalTime = ONE_ROUND_TIME;
-		startTime = Time.realtimeSinceStartup;
+		if (isServer)
+			startTime = Time.realtimeSinceStartup;
 	}
 
 	void Update()
@@ -52,9 +53,9 @@ public class RoundMgr : NetworkBehaviour
 		float now = Time.realtimeSinceStartup;
 		if (now - lastSyncTime > 1.0f)
 		{
-			// 没1s同步一次剩余时间
+			// 每1s同步一次时间
 			lastSyncTime = now;
-			RpcSetLeftTime(lastSyncTime);
+			RpcSetCurrentTime(lastSyncTime);
 		}
 		if (leftTime <= 0)
 			End();
@@ -66,7 +67,7 @@ public class RoundMgr : NetworkBehaviour
 	}
 
 	[ClientRpc]
-	void RpcSetLeftTime(float currentTime)
+	void RpcSetCurrentTime(float currentTime)
 	{
 		if (!hasAuthority)
 		{
