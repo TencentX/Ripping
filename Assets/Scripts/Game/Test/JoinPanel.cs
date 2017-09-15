@@ -32,6 +32,11 @@ public class JoinPanel : PanelBase
 			UIMgr.instance.ShowTipString("正在连接主机，请稍后！");
 			return;
 		}
+		if (string.IsNullOrEmpty(ipText.GetComponent<UIInput>().value))
+		{
+			UIMgr.instance.ShowTipString("请输入创建人的房间ID！");
+			return;
+		}
 		NetManager.singleton.networkAddress = ipText.text;
 		client = NetManager.singleton.StartClient();
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
@@ -46,6 +51,7 @@ public class JoinPanel : PanelBase
 
 	private void OnClientConnect(string gameEvent)
 	{
+		ipText.GetComponent<UIInput>().SaveValue();
 		client = null;
 		Exit();
 		RankPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_rank_panel") as RankPanel;
@@ -55,6 +61,6 @@ public class JoinPanel : PanelBase
 	private void OnClientError(string gameEvent)
 	{
 		client = null;
-		UIMgr.instance.ShowTipString("加入房间" + ipText.text + "失败!");
+		UIMgr.instance.ShowTipString("查找房间" + ipText.text + "失败!");
 	}
 }
