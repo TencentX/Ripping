@@ -15,6 +15,7 @@ public class PlayerStateMachine : MonoBehaviour
 		Run,
 		Catch,
 		Caught,
+		Offend,
 		StateNumber,
 	}
 

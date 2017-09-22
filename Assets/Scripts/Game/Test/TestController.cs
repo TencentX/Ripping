@@ -7,11 +7,11 @@ public class TestController : NetworkBehaviour
 {
 	[Tooltip("移动速度")]
 	[SyncVar]
-	public float moveSpeed = 1.0f;
+	public float moveSpeed = 5.0f;
 
 	[Tooltip("奔跑速度")]
 	[SyncVar]
-	public float runSpeed = 2.0f;
+	public float runSpeed = 11.0f;
 
 	[Tooltip("可奔跑能量")]
 	[SyncVar]
@@ -26,6 +26,15 @@ public class TestController : NetworkBehaviour
 	[Tooltip("旋转速度，每帧旋转的度数")]
 	[SyncVar]
 	public float rotateSpeed = 2f;
+
+	[Tooltip("被冲撞时初始速度")]
+	public float offendStartSpeed = 16f;
+
+	[Tooltip("被冲撞时旋转速度，每秒旋转的度数")]
+	public float offendRotateSpeed = 120f;
+
+	[Tooltip("被冲撞时的减速度")]
+	public float offendSpeed = 5f;
 
 	[Tooltip("撕扯距离")]
 	[SyncVar]
@@ -88,6 +97,15 @@ public class TestController : NetworkBehaviour
 	public HideInfo hideInfo;
 	[SyncVar(hook = "OnCaught")]
 	private bool outputCaught = false;
+	public struct OffendInfo
+	{
+		public bool offend;
+		public float speed;
+		public Vector3 direction;
+		public int clockwise;
+	}
+	[SyncVar(hook = "OnOffend")]
+	private OffendInfo offendInfo;
 	[SyncVar(hook = "OnScore")]
 	public int score = 0;
 
@@ -108,6 +126,7 @@ public class TestController : NetworkBehaviour
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Run, EnterRun);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Catch, EnterCatch);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Caught, EnterCaught);
+		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Offend, EnterOffend);
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		targetRotation = thisTransform.rotation;
 		inputDir = thisTransform.forward;
@@ -169,6 +188,25 @@ public class TestController : NetworkBehaviour
 		{
 			// 抓人
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
+		}
+		else if (offendInfo.offend)
+		{
+			// 被冲撞
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Offend);
+			if (hasAuthority)
+			{
+				float speed = offendInfo.speed - offendSpeed * Time.deltaTime;
+				if (speed < 0f)
+				{
+					OffendInfo newInfo = new OffendInfo();
+					newInfo.offend = false;
+					offendInfo = newInfo;
+					return;
+				}
+				thisTransform.Rotate(Vector3.up * offendInfo.clockwise * Time.deltaTime * offendRotateSpeed);
+				offendInfo.speed = speed;
+				controller.Move(offendInfo.direction * offendInfo.speed * Time.deltaTime);
+			}
 		}
 		else if (inputRun)
 		{
@@ -322,6 +360,8 @@ public class TestController : NetworkBehaviour
 	#region input
 	void InjectMove(Vector3 dir)
 	{
+		if (offendInfo.offend)
+			return;
 		inputStop = false;
 		inputDir = dir;
 		FaceToDir(inputDir);
@@ -334,6 +374,8 @@ public class TestController : NetworkBehaviour
 
 	void InjectCatch()
 	{
+		if (offendInfo.offend)
+			return;
 		inputCatch = true;
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 		GameObject ripTarget = null;
@@ -346,6 +388,8 @@ public class TestController : NetworkBehaviour
 
 	void InjectRun(bool value)
 	{
+		if (offendInfo.offend)
+			return;
 		if (inputRun == value)
 			return;
 		inputRun = value;
@@ -486,6 +530,18 @@ public class TestController : NetworkBehaviour
 			hudControl.HideSliderTime();
 			UIMgr.instance.CreatePanel("p_ui_relive_panel");
 		}
+	}
+
+	private void OnOffend(OffendInfo info)
+	{
+		if (!hasAuthority)
+		{
+			this.offendInfo = info;
+		}
+		if (this.offendInfo.offend)
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Offend);
+		else
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 	}
 
 	private void OnScore(int score)
@@ -647,9 +703,21 @@ public class TestController : NetworkBehaviour
 			return;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, hit.gameObject, player.bodyRadius))
 		{
+			// 如果是抓到了某人
 			inputCatch = true;
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 			BeCaught(player);
+		}
+		else if (inputRun)
+		{
+			// 如果没有抓到，则且处于跑动状态，则进行冲撞
+			OffendInfo info;
+			info.offend = true;
+			info.speed = offendStartSpeed + score * 0.01f;
+			info.direction = thisTransform.forward;
+			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
+			player.offendInfo = info;
+			inputRun = false;
 		}
 	}
 
@@ -759,6 +827,11 @@ public class TestController : NetworkBehaviour
 		Scheduler.Create(this, (sche, t, s) => {
 			outputCaught = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
+	}
+
+	private void EnterOffend()
+	{
+		animate.Play("defend");
 	}
 	#endregion 玩家状态
 
