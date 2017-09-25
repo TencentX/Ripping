@@ -109,6 +109,9 @@ public class TestController : NetworkBehaviour
 	[SyncVar(hook = "OnScore")]
 	public int score = 0;
 
+	// 警戒范围
+	const float WARN_DISTANCE = 10f;
+
 	public static TestController mySelf;
 
 	void Awake()
@@ -255,7 +258,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (isLocalPlayer)
 		{
-			// 计算蹦跑时间
+			// 计算奔跑时间
 			float lastShowRunEnergy = showRunEnergy;
 			float now = Time.realtimeSinceStartup;
 			if (inputRun)
@@ -269,6 +272,7 @@ public class TestController : NetworkBehaviour
 			if (hudControl != null)
 				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
 			// 计算视野
+			bool warn = false;
 			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 4, ref targetsInSight, ref targetsOutSight);
 			for (int i = 0; i < targetsInSight.Count; i++)
 			{
@@ -276,7 +280,28 @@ public class TestController : NetworkBehaviour
 			}
 			for (int i = 0; i < targetsOutSight.Count; i++)
 			{
-				targetsOutSight[i].BecameInvisible();
+				SightController target = targetsOutSight[i];
+				target.BecameInvisible();
+				if (!warn)
+				{
+					TestController player = target.GetComponent<TestController>();
+					if (player != null && player.inputRun && Vector3.Distance(sightController.transform.position, player.thisTransform.position) < WARN_DISTANCE)
+						warn = true;
+				}
+			}
+			if (hudControl != null)
+			{
+				if (warn && !hudControl.IsWarnShow())
+				{
+					// 显示警戒标识和提示
+					hudControl.ShowWarnIcon();
+					hudControl.ShoweHudTip("听到脚步声！");
+				}
+				else if (!warn && hudControl.IsWarnShow())
+				{
+					// 隐藏警戒标识
+					hudControl.HideWarnIcon();
+				}
 			}
 		}
 	}
@@ -426,6 +451,7 @@ public class TestController : NetworkBehaviour
 				thisTransform.position = box.transform.position;
 				box.SetHider(this);
 				this.hideInfo = hideInfo;
+				RpcHide(hideInfo);
 			}
 			else
 			{
@@ -435,14 +461,17 @@ public class TestController : NetworkBehaviour
 				newhideInfo.hide = false;
 				newhideInfo.id = hideInfo.id;
 				player.InjectHide(newhideInfo);
+				RpcHide(newhideInfo);
 			}
 		}
 		else
 		{
+			// 跳出箱子
 			this.hideInfo = hideInfo;
 			thisTransform.position = box.GetOutPos();
 			thisTransform.rotation = box.GetOutRotation();
 			box.SetHider(null);
+			RpcHide(hideInfo);
 		}
 	}
 
@@ -758,6 +787,29 @@ public class TestController : NetworkBehaviour
 	{
 		string tip = string.Concat("[FFFF00]", casterName, "[-]撕掉了[FFFF00]", reciverName, "[-]，", "获得[FFFF00]", score, "分[-]");
 		UIMgr.instance.ShowTipString(tip);
+	}
+
+	[ClientRpc]
+	public void RpcHide(HideInfo hideInfo)
+	{
+		Box box = BoxMgr.instance.GetBox(hideInfo.id);
+		if (box == null)
+			return;
+		foreach (NetworkIdentity identity in NetworkServer.objects.Values)
+		{
+			if (identity.isLocalPlayer)
+			{
+				TestController player = identity.GetComponent<TestController>();
+				if (player.outputCaught)
+					return;
+				if (player.hudControl != null && Vector3.Distance(box.transform.position, identity.transform.position) < WARN_DISTANCE)
+				{
+					player.hudControl.ShowWarnIcon(1.0f);
+					player.hudControl.ShoweHudTip("听到箱子的声音！");
+				}
+				return;
+			}
+		}
 	}
 
 	public override void OnStartLocalPlayer()

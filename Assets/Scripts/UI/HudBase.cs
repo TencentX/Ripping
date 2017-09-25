@@ -34,7 +34,7 @@ public class HudBase : MonoBehaviour {
         return followTarget != null ;//&& CoreEntry.uiMgr.showHud;
     }
 
-    protected void LateUpdate(){
+    protected virtual void LateUpdate(){
 
         if(!active)return;        
         if (gameCamera == null) gameCamera = Camera.main; 
