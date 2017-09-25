@@ -110,7 +110,7 @@ public class TestController : NetworkBehaviour
 	public int score = 0;
 
 	// 警戒范围
-	const float WARN_DISTANCE = 10f;
+	const float WARN_DISTANCE = 15f;
 
 	public static TestController mySelf;
 
