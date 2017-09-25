@@ -746,7 +746,7 @@ public class TestController : NetworkBehaviour
 
 	public void AddScore(int score)
 	{
-		sightRange += score * 0.1f;
+		sightRange += score * 0.25f;
 		runEnergy += 0.05f;
 		this.score += score;
 		if (hasAuthority)
