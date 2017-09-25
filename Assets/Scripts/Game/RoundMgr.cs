@@ -27,7 +27,7 @@ public class RoundMgr : NetworkBehaviour
 	/// <summary>
 	/// 一局的时间
 	/// </summary>
-	public const float ONE_ROUND_TIME = 600f;
+	public const float ONE_ROUND_TIME = 390f;
 
 	void Awake()
 	{
