@@ -18,6 +18,7 @@ public class PlayerStateMachine : MonoBehaviour
 		Offend,
 		Jump,
 		Defend,
+		Push,
 		StateNumber,
 	}
 

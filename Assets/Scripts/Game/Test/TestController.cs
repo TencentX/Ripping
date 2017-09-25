@@ -81,6 +81,7 @@ public class TestController : NetworkBehaviour
 
 	// 是否正在防御
 	private bool defending = false;
+	private bool pushing = false;
 
 	// 输入
 	[SyncVar]
@@ -135,6 +136,7 @@ public class TestController : NetworkBehaviour
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Offend, EnterOffend);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Jump, EnterJump);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Defend, EnterDefend);
+		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Push, EnterPush);
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		targetRotation = thisTransform.rotation;
 		inputDir = thisTransform.forward;
@@ -250,6 +252,11 @@ public class TestController : NetworkBehaviour
 				controller.Move(inputDir * moveSpeed * Time.deltaTime);
 			}
 		}
+		else if (pushing)
+		{
+			// 推
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Push);
+		}
 		else if (defending)
 		{
 			// 防御
@@ -322,9 +329,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectMove(dir);
+			InjectMove(dir);
 		}
 	}
 
@@ -333,9 +338,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectStop();
+			InjectStop();
 		}
 	}
 
@@ -344,9 +347,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectCatch();
+			InjectCatch();
 		}
 	}
 
@@ -355,9 +356,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectRun(pressed);
+			InjectRun(pressed);
 		}
 	}
 
@@ -366,9 +365,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectHide(hideInfo);
+			InjectHide(hideInfo);
 		}
 	}
 
@@ -377,9 +374,7 @@ public class TestController : NetworkBehaviour
 	{
 		if (hasAuthority)
 		{
-			GameObject go = NetworkServer.FindLocalObject(netId);
-			TestController player = go.GetComponent<TestController>();
-			player.InjectLook(id);
+			InjectLook(id);
 		}
 	}
 
@@ -682,24 +677,24 @@ public class TestController : NetworkBehaviour
 	private void OnSignPress(string gameEvent, GameObject go)
 	{
 		System.Action callback;
+		Box box = go.GetComponent<Box>();
+		if (box == null)
+			return;
+		box.PreOpen();
 		openingBox = true;
 		OnStop("");
 		EventMgr.instance.TriggerEvent<bool>("CloseToBox", false);
 		callback = () =>
 		{
 			openingBox = false;
-			Box box = go.GetComponent<Box>();
-			if (box != null)
-			{
-				box.Open();
-				HideInfo hideInfo;
-				hideInfo.hide = true;
-				hideInfo.id = box.id;
-				if (hasAuthority)
-					InjectHide(hideInfo);
-				else
-					CmdHide(hideInfo);
-			}
+			box.Open();
+			HideInfo hideInfo;
+			hideInfo.hide = true;
+			hideInfo.id = box.id;
+			if (hasAuthority)
+				InjectHide(hideInfo);
+			else
+				CmdHide(hideInfo);
 		};
 		if (hudControl != null)
 			hudControl.ShowSliderTime(0f, 1f, 1f, callback);
@@ -714,6 +709,12 @@ public class TestController : NetworkBehaviour
 		if (this.hideInfo.hide)
 		{
 			// 处于躲藏状态，跳出箱子
+			if (box.isOpening)
+			{
+				// 如果箱子正在被打开，提示
+				UIMgr.instance.ShowTipString("箱子正在被打开，请稍后");
+				return;
+			}
 			box.Open();
 			HideInfo hideInfo;
 			hideInfo.hide = false;
@@ -729,6 +730,7 @@ public class TestController : NetworkBehaviour
 			GameObject panel = UIMgr.instance.GetPanel("p_ui_sign_panel");
 			if (panel != null)
 				panel.SetActive(false);
+			box.PreOpen();
 			openingBox = true;
 			OnStop("");
 			callback = () =>
@@ -775,6 +777,7 @@ public class TestController : NetworkBehaviour
 			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
 			player.offendInfo = info;
 			inputRun = false;
+			RpcPush();
 		}
 	}
 
@@ -825,6 +828,13 @@ public class TestController : NetworkBehaviour
 	}
 
 	[ClientRpc]
+	public void RpcPush()
+	{
+		pushing = true;
+		stateMachine.SetState(PlayerStateMachine.PlayerState.Push);
+	}
+
+	[ClientRpc]
 	public void RpcHide(NetworkInstanceId netId, HideInfo hideInfo)
 	{
 		Box box = BoxMgr.instance.GetBox(hideInfo.id);
@@ -862,6 +872,7 @@ public class TestController : NetworkBehaviour
 		{
 			CmdPlayerName(LoginPanel.inputName);
 		}
+		BoxMgr.instance.Init();
 	}
 
 	public override void OnNetworkDestroy ()
@@ -933,6 +944,14 @@ public class TestController : NetworkBehaviour
 		animate.Play("defend");
 		Scheduler.Create(this, (sche, t, s) => {
 			defending = false;
+		}, 0f, 0f, 0.5f);
+	}
+
+	private void EnterPush()
+	{
+		animate.Play("bunt");
+		Scheduler.Create(this, (sche, t, s) => {
+			pushing = false;
 		}, 0f, 0f, 0.5f);
 	}
 	#endregion 玩家状态

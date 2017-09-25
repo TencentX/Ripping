@@ -5,7 +5,7 @@ using UnityEngine.Networking;
 /// <summary>
 /// 藏人的箱子
 /// </summary>
-public class Box : MonoBehaviour
+public class Box : NetworkBehaviour
 {
 	/// <summary>
 	/// 箱子id
@@ -16,6 +16,9 @@ public class Box : MonoBehaviour
 	/// 跳出的位置
 	/// </summary>
 	public Transform outTransform;
+
+	[SyncVar]
+	public bool isOpening = false;
 
 	// 动画
 	private Animation ani;
@@ -67,10 +70,35 @@ public class Box : MonoBehaviour
 		return player;
 	}
 
-	[ContextMenu("Open")]
+	public void PreOpen()
+	{
+		if (hasAuthority)
+			InjectOpenBox(true);
+		else
+			CmdOpenBox(true);
+	}
+	
 	public void Open()
 	{
 		ani.Play("hide");
+		if (hasAuthority)
+			InjectOpenBox(false);
+		else
+			CmdOpenBox(false);
+	}
+
+	void InjectOpenBox(bool value)
+	{
+		isOpening = value;
+	}
+
+	[Command]
+	void CmdOpenBox(bool value)
+	{
+		if (hasAuthority)
+		{
+			InjectOpenBox(value);
+		}
 	}
 
 	public Vector3 GetOutPos()

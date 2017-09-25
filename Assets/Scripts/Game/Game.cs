@@ -71,7 +71,6 @@ public class Game : MonoBehaviour
 		outBoxBtn.gameObject.SetActive(false);
 		Canvas canvas = GameObject.FindObjectOfType<Canvas>();
 		canvas.gameObject.SetActive(false);
-		BoxMgr.instance.Init();
 		EventTriggerListener.Get(runBtn.gameObject).onDown = OnDownRun;
 		EventTriggerListener.Get(runBtn.gameObject).onUp = OnUpRun;
 		EventTriggerListener.Get(catchBtn.gameObject).onDown = OnDownCatch;
