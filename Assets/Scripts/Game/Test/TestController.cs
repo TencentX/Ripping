@@ -747,7 +747,7 @@ public class TestController : NetworkBehaviour
 	public void AddScore(int score)
 	{
 		sightRange += score * 0.1f;
-		runEnergy += 0.1f;
+		runEnergy += 0.05f;
 		this.score += score;
 		if (hasAuthority)
 			EventMgr.instance.TriggerEvent<NetworkInstanceId>("RefreshScore", netId);
