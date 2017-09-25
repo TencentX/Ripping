@@ -6,6 +6,11 @@ using System.Collections;
 /// </summary>
 public class SightController : MonoBehaviour
 {
+	/// <summary>
+	/// 视线源点
+	/// </summary>
+	public Transform sightSource;
+
 	private Renderer[] renderers;
 
 	private bool lastVisible = true;
@@ -42,6 +47,13 @@ public class SightController : MonoBehaviour
 		{
 			return lastVisible;
 		}
+	}
+
+	public Transform GetSource()
+	{
+		if (sightSource == null)
+			sightSource = transform;
+		return sightSource;
 	}
 
 	void OnDestroy()

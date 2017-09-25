@@ -79,6 +79,9 @@ public class TestController : NetworkBehaviour
 	// 是否正在打开箱子
 	private bool openingBox = false;
 
+	// 是否正在防御
+	private bool defending = false;
+
 	// 输入
 	[SyncVar]
 	private Vector3 inputDir = Vector3.zero;
@@ -130,6 +133,8 @@ public class TestController : NetworkBehaviour
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Catch, EnterCatch);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Caught, EnterCaught);
 		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Offend, EnterOffend);
+		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Jump, EnterJump);
+		stateMachine.SetStateFunction(PlayerStateMachine.PlayerState.Defend, EnterDefend);
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 		targetRotation = thisTransform.rotation;
 		inputDir = thisTransform.forward;
@@ -244,6 +249,11 @@ public class TestController : NetworkBehaviour
 				thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
 				controller.Move(inputDir * moveSpeed * Time.deltaTime);
 			}
+		}
+		else if (defending)
+		{
+			// 防御
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Defend);
 		}
 		else
 		{
@@ -406,8 +416,15 @@ public class TestController : NetworkBehaviour
 		GameObject ripTarget = null;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, ref ripTarget))
 		{
+			// 抓到了某个人
 			TestController player = ripTarget.GetComponent<TestController>();
 			BeCaught(player);
+		}
+		else if (RipMgr.instance.CheckHit(gameObject, catchDistance, catchDegree, ref ripTarget))
+		{
+			// 碰到了某个人
+			TestController player = ripTarget.GetComponent<TestController>();
+			player.RpcBeHit();
 		}
 	}
 
@@ -451,7 +468,7 @@ public class TestController : NetworkBehaviour
 				thisTransform.position = box.transform.position;
 				box.SetHider(this);
 				this.hideInfo = hideInfo;
-				RpcHide(hideInfo);
+				RpcHide(netId, hideInfo);
 			}
 			else
 			{
@@ -461,7 +478,7 @@ public class TestController : NetworkBehaviour
 				newhideInfo.hide = false;
 				newhideInfo.id = hideInfo.id;
 				player.InjectHide(newhideInfo);
-				RpcHide(newhideInfo);
+				RpcHide(player.netId, newhideInfo);
 			}
 		}
 		else
@@ -471,7 +488,7 @@ public class TestController : NetworkBehaviour
 			thisTransform.position = box.GetOutPos();
 			thisTransform.rotation = box.GetOutRotation();
 			box.SetHider(null);
-			RpcHide(hideInfo);
+			RpcHide(netId, hideInfo);
 		}
 	}
 
@@ -521,7 +538,18 @@ public class TestController : NetworkBehaviour
 				}
 			}
 		}
-		model.SetActive(!hideInfo.hide);
+		if (hideInfo.hide)
+		{
+			stateMachine.SetState(PlayerStateMachine.PlayerState.Jump);
+			Scheduler.Create(this, (sche, t, s) => {
+				stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+				model.SetActive(false);
+			}, 0f, 0f, 1.0f);
+		}
+		else
+		{
+			model.SetActive(true);
+		}
 		if (!hideInfo.hide && sightController.InSight)
 			if (hudControl != null)
 				hudControl.Show();
@@ -790,7 +818,14 @@ public class TestController : NetworkBehaviour
 	}
 
 	[ClientRpc]
-	public void RpcHide(HideInfo hideInfo)
+	public void RpcBeHit()
+	{
+		defending = true;
+		stateMachine.SetState(PlayerStateMachine.PlayerState.Defend);
+	}
+
+	[ClientRpc]
+	public void RpcHide(NetworkInstanceId netId, HideInfo hideInfo)
 	{
 		Box box = BoxMgr.instance.GetBox(hideInfo.id);
 		if (box == null)
@@ -801,6 +836,8 @@ public class TestController : NetworkBehaviour
 			{
 				TestController player = identity.GetComponent<TestController>();
 				if (player.outputCaught)
+					return;
+				if (netId == player.netId)
 					return;
 				if (player.hudControl != null && Vector3.Distance(box.transform.position, identity.transform.position) < WARN_DISTANCE)
 				{
@@ -884,6 +921,19 @@ public class TestController : NetworkBehaviour
 	private void EnterOffend()
 	{
 		animate.Play("defend");
+	}
+
+	private void EnterJump()
+	{
+		animate.Play("jump");
+	}
+
+	private void EnterDefend()
+	{
+		animate.Play("defend");
+		Scheduler.Create(this, (sche, t, s) => {
+			defending = false;
+		}, 0f, 0f, 0.5f);
 	}
 	#endregion 玩家状态
 

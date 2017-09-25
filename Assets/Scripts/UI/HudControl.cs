@@ -167,10 +167,11 @@ public class HudControl
 			hudGos.Add(hudWarnIcon.gameObject);
 		}
 		hudWarnIcon.Show();
-		Scheduler.RemoveSchedule(warnTimeAction);
+		warnTimeAction = Scheduler.RemoveSchedule(warnTimeAction);
 		if (showTime > 0)
 		{
 			warnTimeAction = Scheduler.Create(this, (sche, t, s) => {
+				warnTimeAction = -1;
 				hudWarnIcon.Hide();
 			}, 0, 0, showTime).actionId;
 		}
@@ -178,6 +179,8 @@ public class HudControl
 
 	public void HideWarnIcon()
 	{
+		if (warnTimeAction != -1)
+			return;
 		if (hudWarnIcon != null)
 			hudWarnIcon.Hide();
 	}

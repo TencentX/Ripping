@@ -42,9 +42,9 @@ public class SightMgr : Singleton<SightMgr>
 	{
 		bool inSight = false;
 		// 坐标和朝向去除y坐标影响
-		Vector3 pos = center.transform.position;
+		Vector3 pos = center.GetSource().position;
 		pos.y = 0;
-		Vector3 forward = center.transform.forward;
+		Vector3 forward = center.GetSource().forward;
 		forward.y = 0;
 		// 自身看得见
 		if (checkTarget == center)
@@ -63,7 +63,7 @@ public class SightMgr : Singleton<SightMgr>
 		if (Vector3.Angle(forward, delta) > angle / 2)
 			return inSight;
 		// 判断视野中有没有遮挡
-		if (Physics.Raycast(pos, delta, distance, layerMask))
+		if (Physics.Raycast(center.GetSource().position, delta, distance, layerMask))
 		    return inSight;
 		inSight = true;
 		return inSight;
