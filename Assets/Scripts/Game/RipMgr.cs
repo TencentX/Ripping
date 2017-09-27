@@ -96,7 +96,7 @@ public class RipMgr : Singleton<RipMgr>
 		if (Vector3.Dot(forward, targetPos - pos) <= 0)
 			return hit;
 		// 判断朝向是否基本一致
-		if (Vector3.Dot(forward, checkTarget.transform.forward) < 0)
+		if (Vector3.Dot(forward, checkTarget.transform.forward) < 0.342f)
 			return hit;
 		hit = true;
 		return hit;
@@ -148,7 +148,7 @@ public class RipMgr : Singleton<RipMgr>
 		if (Vector3.Dot(forward, targetPos - pos) <= 0)
 			return hit;
 		// 判断朝向是否基本一致
-		if (Vector3.Dot(forward, checkTarget.transform.forward) >= 0)
+		if (Vector3.Dot(forward, checkTarget.transform.forward) >= 0.342f)
 			return hit;
 		hit = true;
 		return hit;

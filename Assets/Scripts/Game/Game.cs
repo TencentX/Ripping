@@ -78,7 +78,7 @@ public class Game : MonoBehaviour
 		EventMgr.instance.AddListener<bool>("SwitchHide", OnSwitchHide);
 		EventMgr.instance.AddListener("OnClientConnect", OnClientConnect);
 		EventMgr.instance.AddListener("OnClientDisconnect", OnClientDisconnect);
-		EventMgr.instance.AddListener<float>("RefreshRunTime", OnRunTimeRefresh);
+		EventMgr.instance.AddListener<float, float>("RefreshRunEnergy", OnRunEnergyRefresh);
 		EventMgr.instance.AddListener<int, int>("AddScore", OnAddScore);
 		EventMgr.instance.AddListener<bool>("CloseToBox", OnCloseToBox);
 		NickNameMgr.instance.Init();
@@ -125,9 +125,9 @@ public class Game : MonoBehaviour
 			canvas.gameObject.SetActive(false);
 	}
 
-	private void OnRunTimeRefresh(string gameEvent, float runTime)
+	private void OnRunEnergyRefresh(string gameEvent, float leftRunEnergy, float runEnergy)
 	{
-		runText.text = string.Concat("奔跑时间：", runTime.ToString());
+		runText.text = string.Concat("奔跑：", (leftRunEnergy * 100).ToString("F0"), "/", (runEnergy * 100).ToString("F0"));
 	}
 
 	private void OnAddScore(string gameEvent, int score, int delta)

@@ -27,6 +27,10 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	public float rotateSpeed = 2f;
 
+	[Tooltip("奔跑旋转速度，每帧旋转的度数")]
+	[SyncVar]
+	public float runRotateSpeed = 4f;
+
 	[Tooltip("被冲撞时初始速度")]
 	public float offendStartSpeed = 16f;
 
@@ -177,6 +181,14 @@ public class TestController : NetworkBehaviour
 			RipMgr.instance.AddTarget(gameObject, bodyRadius);
 		if (isClient)
 			sightController = gameObject.AddMissingComponent<SightController>();
+		// 有可能是中途进入游戏
+		model.SetActive(!hideInfo.hide);
+		if (!hideInfo.hide && sightController.InSight)
+			if (hudControl != null)
+				hudControl.Show();
+		else
+			if (hudControl != null)
+				hudControl.Hide();
 	}
 
 	void FixedUpdate()
@@ -227,7 +239,7 @@ public class TestController : NetworkBehaviour
 				stateMachine.SetState(PlayerStateMachine.PlayerState.Run);
 				if (hasAuthority)
 				{
-					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * rotateSpeed);
+					thisTransform.rotation = Quaternion.Lerp(thisTransform.rotation, targetRotation, Time.deltaTime * runRotateSpeed);
 					controller.Move(inputDir * runSpeed * Time.deltaTime);
 				}
 			}
@@ -284,7 +296,7 @@ public class TestController : NetworkBehaviour
 				showRunEnergy = Mathf.Max(Mathf.Min(leftRunEnergy + (now - runEndTime) * RECOVER_SPEED, runEnergy), 0);
 			if (!lastShowRunEnergy.Equals(showRunEnergy))
 			{
-				EventMgr.instance.TriggerEvent<float>("RefreshRunTime", showRunEnergy);
+				EventMgr.instance.TriggerEvent<float, float>("RefreshRunEnergy", showRunEnergy, runEnergy);
 			}
 			if (hudControl != null)
 				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
@@ -361,6 +373,18 @@ public class TestController : NetworkBehaviour
 	}
 
 	[Command]
+	void CmdOpenBox(int boxId, bool value)
+	{
+		if (hasAuthority)
+		{
+			Box box = BoxMgr.instance.GetBox(boxId);
+			if (box == null)
+				return;
+			box.Open(value);
+		}
+	}
+
+	[Command]
 	void CmdHide(HideInfo hideInfo)
 	{
 		if (hasAuthority)
@@ -405,6 +429,8 @@ public class TestController : NetworkBehaviour
 	void InjectCatch()
 	{
 		if (offendInfo.offend)
+			return;
+		if (outputCaught)
 			return;
 		inputCatch = true;
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
@@ -650,6 +676,8 @@ public class TestController : NetworkBehaviour
 
 	private void OnCatchPress(string gameEvent, bool pressed)
 	{
+		if (outputCaught)
+			return;
 		if (!pressed)
 		{
 			// 撕
@@ -680,14 +708,14 @@ public class TestController : NetworkBehaviour
 		Box box = go.GetComponent<Box>();
 		if (box == null)
 			return;
-		box.PreOpen();
+		CmdOpenBox(box.id, true);
 		openingBox = true;
 		OnStop("");
 		EventMgr.instance.TriggerEvent<bool>("CloseToBox", false);
 		callback = () =>
 		{
 			openingBox = false;
-			box.Open();
+			CmdOpenBox(box.id, false);
 			HideInfo hideInfo;
 			hideInfo.hide = true;
 			hideInfo.id = box.id;
@@ -711,11 +739,10 @@ public class TestController : NetworkBehaviour
 			// 处于躲藏状态，跳出箱子
 			if (box.isOpening)
 			{
-				// 如果箱子正在被打开，提示
-				UIMgr.instance.ShowTipString("箱子正在被打开，请稍后");
+				// 如果箱子正在被打开，不让跳
 				return;
 			}
-			box.Open();
+			CmdOpenBox(box.id, false);
 			HideInfo hideInfo;
 			hideInfo.hide = false;
 			hideInfo.id = this.hideInfo.id;
@@ -730,12 +757,12 @@ public class TestController : NetworkBehaviour
 			GameObject panel = UIMgr.instance.GetPanel("p_ui_sign_panel");
 			if (panel != null)
 				panel.SetActive(false);
-			box.PreOpen();
+			CmdOpenBox(box.id, true);
 			openingBox = true;
 			OnStop("");
 			callback = () =>
 			{
-				box.Open();
+				CmdOpenBox(box.id, false);
 				Scheduler.Create(this, (sche, t, s) => {
 					if (panel != null)
 						panel.SetActive(true);
@@ -754,6 +781,8 @@ public class TestController : NetworkBehaviour
 	void OnControllerColliderHit(ControllerColliderHit hit)
 	{
 		if (!hasAuthority)
+			return;
+		if (outputCaught)
 			return;
 		TestController player = hit.gameObject.GetComponent<TestController>();
 		if (player == null)
@@ -797,6 +826,9 @@ public class TestController : NetworkBehaviour
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
 			player.outputCaught = false;
+			player.openingBox = false;
+			player.defending = false;
+			player.pushing = false;
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
 			inputRun = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);

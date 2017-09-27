@@ -70,34 +70,16 @@ public class Box : NetworkBehaviour
 		return player;
 	}
 
-	public void PreOpen()
+	public void Open(bool preOpen = false)
 	{
-		if (hasAuthority)
-			InjectOpenBox(true);
-		else
-			CmdOpenBox(true);
-	}
-	
-	public void Open()
-	{
-		ani.Play("hide");
-		if (hasAuthority)
-			InjectOpenBox(false);
-		else
-			CmdOpenBox(false);
-	}
-
-	void InjectOpenBox(bool value)
-	{
-		isOpening = value;
-	}
-
-	[Command]
-	void CmdOpenBox(bool value)
-	{
-		if (hasAuthority)
+		if (!preOpen)
 		{
-			InjectOpenBox(value);
+			ani.Play("hide");
+			isOpening = false;
+		}
+		else
+		{
+			isOpening = true;
 		}
 	}
 
