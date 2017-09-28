@@ -835,7 +835,7 @@ public class TestController : NetworkBehaviour
 			// 如果没有抓到，则且处于跑动状态，则进行冲撞
 			OffendInfo info;
 			info.offend = true;
-			info.speed = offendStartSpeed + score * 0.01f;
+			info.speed = offendStartSpeed + score * 0.2f;
 			info.direction = thisTransform.forward;
 			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
 			player.offendInfo = info;
