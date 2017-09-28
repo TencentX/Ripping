@@ -13,7 +13,7 @@ public class RelivePanel : PanelBase
 
 	private float startTime;
 
-	public const float RELIVE_TIME = 5f;
+	public const float RELIVE_TIME = 4f;
 
 	protected override void Init (GameObject obj)
 	{
