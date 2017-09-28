@@ -24,7 +24,7 @@ public class RelivePanel : PanelBase
 	void Update()
 	{
 		float delta = Time.unscaledTime - startTime;
-		if (delta < 5f)
+		if (delta < RELIVE_TIME)
 			tip.text = "你将在[FFFF00]" + (RELIVE_TIME - delta).ToString("F0") + "[-]秒后复活";
 		else
 			Exit();
