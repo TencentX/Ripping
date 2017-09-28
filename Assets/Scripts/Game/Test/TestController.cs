@@ -380,7 +380,10 @@ public class TestController : NetworkBehaviour
 			Box box = BoxMgr.instance.GetBox(boxId);
 			if (box == null)
 				return;
-			box.Open(value);
+			if (mySelf != null)
+				box.Open(value, SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, box.gameObject));
+			else
+				box.Open(value, false);
 		}
 	}
 
@@ -551,7 +554,10 @@ public class TestController : NetworkBehaviour
 			Box box = BoxMgr.instance.GetBox(hideInfo.id);
 			if (box != null)
 			{
-				box.Open();
+				if (mySelf != null)
+					box.Open(false, SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, box.gameObject));
+				else
+					box.Open(false, false);
 				if (hideInfo.hide)
 				{
 					thisTransform.position = box.transform.position;
@@ -789,6 +795,7 @@ public class TestController : NetworkBehaviour
 			OnStop("");
 			callback = () =>
 			{
+				box.Open();
 				CmdOpenBox(box.id, false);
 				Scheduler.Create(this, (sche, t, s) => {
 					if (panel != null)
@@ -893,34 +900,17 @@ public class TestController : NetworkBehaviour
 	[ClientRpc]
 	public void RpcHide(NetworkInstanceId netId, HideInfo hideInfo)
 	{
+		if (mySelf == null)
+			return;
 		Box box = BoxMgr.instance.GetBox(hideInfo.id);
 		if (box == null)
 			return;
-		GameObject go = NetworkServer.FindLocalObject(netId);
-		foreach (NetworkIdentity identity in NetworkServer.objects.Values)
+		if (SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, box.gameObject))
+			return;
+		if (mySelf.hudControl != null && Vector3.Distance(box.transform.position, mySelf.thisTransform.position) < WARN_DISTANCE)
 		{
-			if (identity.isLocalPlayer)
-			{
-				TestController player = identity.GetComponent<TestController>();
-				if (player.outputCaught)
-					return;
-				if (netId == player.netId)
-					return;
-				if (go != null)
-				{
-					// 在视野内，不处理
-					SightController center = player.GetComponent<SightController>();
-					SightController checkTarget = go.GetComponent<SightController>();
-					if (SightMgr.instance.Check(center, player.sightRange, player.sightAngle, player.bodyRadius * 4, checkTarget))
-						return;
-				}
-				if (player.hudControl != null && Vector3.Distance(box.transform.position, player.thisTransform.position) < WARN_DISTANCE)
-				{
-					player.hudControl.ShowWarnIcon(1.0f);
-					player.hudControl.ShoweHudTip("听到箱子的声音！");
-				}
-				return;
-			}
+			mySelf.hudControl.ShowWarnIcon(1.0f);
+			mySelf.hudControl.ShoweHudTip("听到箱子的声音！");
 		}
 	}
 

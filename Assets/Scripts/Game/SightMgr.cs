@@ -32,13 +32,13 @@ public class SightMgr : Singleton<SightMgr>
 		targetsOutSight.Clear();
 		for (int i = 0; i < targetList.Count; i++)
 		{
-			if (Check(center, sightRange, angle, selfRadius, targetList[i]))
+			if (Check(center, sightRange, angle, selfRadius, targetList[i].gameObject))
 				targetsInSight.Add(targetList[i]);
 			else
 				targetsOutSight.Add(targetList[i]);
 		}
 	}
-	public bool Check(SightController center, float sightRange, float angle, float selfRadius, SightController checkTarget)
+	public bool Check(SightController center, float sightRange, float angle, float selfRadius, GameObject checkTarget)
 	{
 		bool inSight = false;
 		// 坐标和朝向去除y坐标影响
@@ -47,7 +47,7 @@ public class SightMgr : Singleton<SightMgr>
 		Vector3 forward = center.GetSource().forward;
 		forward.y = 0;
 		// 自身看得见
-		if (checkTarget == center)
+		if (checkTarget == center.gameObject)
 			return true;
 		Vector3 targetPos = checkTarget.transform.position;
 		targetPos.y = 0;

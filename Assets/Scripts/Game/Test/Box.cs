@@ -70,11 +70,12 @@ public class Box : NetworkBehaviour
 		return player;
 	}
 
-	public void Open(bool preOpen = false)
+	public void Open(bool preOpen = false, bool playanimation = true)
 	{
 		if (!preOpen)
 		{
-			ani.Play("hide");
+			if (playanimation)
+				ani.Play("hide");
 			isOpening = false;
 		}
 		else
