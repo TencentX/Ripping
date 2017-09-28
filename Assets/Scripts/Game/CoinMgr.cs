@@ -21,7 +21,7 @@ public class CoinMgr : Singleton<CoinMgr>
 	GameObject smallCoinPrefab;
 
 	// 金币个数
-	const int COIN_NUM = 10;
+	const int COIN_NUM = 20;
 
 	public void Init()
 	{
