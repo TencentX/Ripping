@@ -20,6 +20,8 @@ public class NetManager : NetworkManager
 	#region client
 	public override void OnClientConnect(NetworkConnection conn)
 	{
+		if (conn == null)
+			return;
 		base.OnClientConnect(conn);
 		isClient = true;
 		EventMgr.instance.TriggerEvent("OnClientConnect");

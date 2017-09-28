@@ -432,6 +432,8 @@ public class TestController : NetworkBehaviour
 			return;
 		if (outputCaught)
 			return;
+		if (hideInfo.hide)
+			return;
 		inputCatch = true;
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 		GameObject ripTarget = null;
@@ -451,6 +453,8 @@ public class TestController : NetworkBehaviour
 
 	void InjectRun(bool value)
 	{
+		if (outputCaught)
+			return;
 		if (offendInfo.offend)
 			return;
 		if (inputRun == value)
@@ -563,8 +567,11 @@ public class TestController : NetworkBehaviour
 		{
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Jump);
 			Scheduler.Create(this, (sche, t, s) => {
-				stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
-				model.SetActive(false);
+				if (this.hideInfo.hide)
+				{
+					stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
+					model.SetActive(false);
+				}
 			}, 0f, 0f, 1.0f);
 		}
 		else
@@ -605,6 +612,9 @@ public class TestController : NetworkBehaviour
 		this.outputCaught = outputCaught;
 		if (isLocalPlayer && outputCaught)
 		{
+			openingBox = false;
+			defending = false;
+			pushing = false;
 			hudControl.HideSliderTime();
 			UIMgr.instance.CreatePanel("p_ui_relive_panel");
 		}
@@ -651,8 +661,11 @@ public class TestController : NetworkBehaviour
 
 	private void OnMove(string gameEvent, Vector3 dir)
 	{
-		// 正在开箱子，不处理
+		if (outputCaught)
+			return;
 		if (openingBox)
+			return;
+		if (hideInfo.hide)
 			return;
 		if (hasAuthority)
 		{
@@ -678,6 +691,10 @@ public class TestController : NetworkBehaviour
 	{
 		if (outputCaught)
 			return;
+		if (openingBox)
+			return;
+		if (hideInfo.hide)
+			return;
 		if (!pressed)
 		{
 			// 撕
@@ -696,6 +713,12 @@ public class TestController : NetworkBehaviour
 
 	private void OnRunPress(string gameEvent, bool pressed)
 	{
+		if (outputCaught)
+			return;
+		if (openingBox)
+			return;
+		if (hideInfo.hide)
+			return;
 		if (hasAuthority)
 			InjectRun(pressed);
 		else
@@ -704,6 +727,10 @@ public class TestController : NetworkBehaviour
 
 	private void OnSignPress(string gameEvent, GameObject go)
 	{
+		if (outputCaught)
+			return;
+		if (openingBox)
+			return;
 		System.Action callback;
 		Box box = go.GetComponent<Box>();
 		if (box == null)
@@ -730,6 +757,8 @@ public class TestController : NetworkBehaviour
 
 	private void OnBoxPress(string gameEvent)
 	{
+		if (outputCaught)
+			return;
 		Box box = BoxMgr.instance.GetBoxAround(thisTransform.position);
 		if (box == null)
 			return;
@@ -805,7 +834,7 @@ public class TestController : NetworkBehaviour
 			info.direction = thisTransform.forward;
 			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
 			player.offendInfo = info;
-			inputRun = false;
+			InjectRun(false);
 			RpcPush();
 		}
 	}
@@ -826,11 +855,8 @@ public class TestController : NetworkBehaviour
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
 			player.outputCaught = false;
-			player.openingBox = false;
-			player.defending = false;
-			player.pushing = false;
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
-			inputRun = false;
+			player.inputRun = false;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
 		// 通知所有玩家
 		RpcBeCaught(playerName, player.playerName, score);
@@ -872,6 +898,7 @@ public class TestController : NetworkBehaviour
 		Box box = BoxMgr.instance.GetBox(hideInfo.id);
 		if (box == null)
 			return;
+		GameObject go = NetworkServer.FindLocalObject(netId);
 		foreach (NetworkIdentity identity in NetworkServer.objects.Values)
 		{
 			if (identity.isLocalPlayer)
@@ -881,7 +908,15 @@ public class TestController : NetworkBehaviour
 					return;
 				if (netId == player.netId)
 					return;
-				if (player.hudControl != null && Vector3.Distance(box.transform.position, identity.transform.position) < WARN_DISTANCE)
+				if (go != null)
+				{
+					// 在视野内，不处理
+					SightController center = player.GetComponent<SightController>();
+					SightController checkTarget = go.GetComponent<SightController>();
+					if (SightMgr.instance.Check(center, player.sightRange, player.sightAngle, player.bodyRadius * 4, checkTarget))
+						return;
+				}
+				if (player.hudControl != null && Vector3.Distance(box.transform.position, player.thisTransform.position) < WARN_DISTANCE)
 				{
 					player.hudControl.ShowWarnIcon(1.0f);
 					player.hudControl.ShoweHudTip("听到箱子的声音！");

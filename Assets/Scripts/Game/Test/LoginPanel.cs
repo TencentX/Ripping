@@ -42,6 +42,12 @@ public class LoginPanel : PanelBase
 			UIMgr.instance.ShowTipString("昵称不能为空！");
 			return;
 		}
+		if (NetManager.singleton.client != null)
+		{
+			// 走到这里，说明点击了加入房间，再点击了创建房间
+			// 需要先删除client
+			NetManager.singleton.StopClient();
+		}
 		if (NetManager.singleton.StartHost() != null && NetworkServer.active)
 		{
 			CoinMgr.instance.Init();
