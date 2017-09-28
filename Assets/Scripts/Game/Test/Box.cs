@@ -17,7 +17,7 @@ public class Box : NetworkBehaviour
 	/// </summary>
 	public Transform outTransform;
 
-	[SyncVar]
+	[SyncVar(hook="OnOpen")]
 	public bool isOpening = false;
 
 	// 动画
@@ -70,17 +70,19 @@ public class Box : NetworkBehaviour
 		return player;
 	}
 
-	public void Open(bool preOpen = false, bool playanimation = true)
+	public void Open(bool preOpen = false)
 	{
-		if (!preOpen)
+		isOpening = preOpen;
+	}
+
+	void OnOpen(bool value)
+	{
+		isOpening = value;
+		if (!isOpening)
 		{
-			if (playanimation)
+			TestController mySelf = TestController.mySelf;
+			if (mySelf != null && SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, gameObject))
 				ani.Play("hide");
-			isOpening = false;
-		}
-		else
-		{
-			isOpening = true;
 		}
 	}
 

@@ -19,6 +19,7 @@ public class Coin : NetworkBehaviour
 	public CoinType type = CoinType.Big;
 
 	[System.NonSerialized]
+	[SyncVar]
 	public string parentName = "";
 
 	const int BIG_COIN_SCORE = 4;
@@ -27,7 +28,11 @@ public class Coin : NetworkBehaviour
 	void Start()
 	{
 		if (isClient)
+		{
 			gameObject.AddMissingComponent<SightController>();
+			GameObject coinPos = GameObject.Find("CoinPos");
+			transform.parent = coinPos.transform.FindChild(parentName);
+		}
 	}
 
 	public void OnTriggerEnter(Collider collider)

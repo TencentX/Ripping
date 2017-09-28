@@ -67,7 +67,7 @@ public class TestController : NetworkBehaviour
 	GameObject model;
 	Transform thisTransform;
 	HudControl hudControl;
-	SightController sightController;
+	public SightController sightController;
 	GameObject quan;
 	GameObject ripArea;
 
@@ -380,10 +380,7 @@ public class TestController : NetworkBehaviour
 			Box box = BoxMgr.instance.GetBox(boxId);
 			if (box == null)
 				return;
-			if (mySelf != null)
-				box.Open(value, SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, box.gameObject));
-			else
-				box.Open(value, false);
+			box.Open(value);
 		}
 	}
 
@@ -554,10 +551,7 @@ public class TestController : NetworkBehaviour
 			Box box = BoxMgr.instance.GetBox(hideInfo.id);
 			if (box != null)
 			{
-				if (mySelf != null)
-					box.Open(false, SightMgr.instance.Check(mySelf.sightController, mySelf.sightRange, mySelf.sightAngle, mySelf.bodyRadius * 4, box.gameObject));
-				else
-					box.Open(false, false);
+				box.Open();
 				if (hideInfo.hide)
 				{
 					thisTransform.position = box.transform.position;
@@ -795,7 +789,6 @@ public class TestController : NetworkBehaviour
 			OnStop("");
 			callback = () =>
 			{
-				box.Open();
 				CmdOpenBox(box.id, false);
 				Scheduler.Create(this, (sche, t, s) => {
 					if (panel != null)
