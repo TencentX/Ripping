@@ -52,6 +52,7 @@ public class JoinPanel : PanelBase
 	private void OnClientConnect(string gameEvent)
 	{
 		ipText.GetComponent<UIInput>().SaveValue();
+		PlayerPrefs.SetString(LoginPanel.PLAYER_NAME, LoginPanel.inputName);
 		client = null;
 		Exit();
 		RankPanel panel = UIMgr.instance.GetOrCreatePanel("p_ui_rank_panel") as RankPanel;

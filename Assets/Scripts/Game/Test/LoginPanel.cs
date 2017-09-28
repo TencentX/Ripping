@@ -22,7 +22,7 @@ public class LoginPanel : PanelBase
 	/// </summary>
 	public UILabel nameText;
 
-	const string PLAYER_NAME = "player_name";
+	public const string PLAYER_NAME = "player_name";
 
 	public static string inputName = "";
 
