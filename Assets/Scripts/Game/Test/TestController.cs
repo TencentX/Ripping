@@ -572,7 +572,7 @@ public class TestController : NetworkBehaviour
 					stateMachine.SetState(PlayerStateMachine.PlayerState.Idle);
 					model.SetActive(false);
 				}
-			}, 0f, 0f, 1.0f);
+			}, 0f, 0f, 0.4f);
 		}
 		else
 		{
@@ -664,8 +664,6 @@ public class TestController : NetworkBehaviour
 		if (outputCaught)
 			return;
 		if (openingBox)
-			return;
-		if (hideInfo.hide)
 			return;
 		if (hasAuthority)
 		{
