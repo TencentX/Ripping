@@ -98,7 +98,7 @@ public class CoinMgr : Singleton<CoinMgr>
 		GameObject prefab;
 		GameObject coin;
 		float rate = Random.Range(0.0f, 1.0f);
-		if (rate >= 0.9)
+		if (rate >= 0.7)
 			prefab = bigCoinPrefab;
 		else
 			prefab = smallCoinPrefab;
