@@ -21,7 +21,7 @@ public class CoinMgr : Singleton<CoinMgr>
 	GameObject smallCoinPrefab;
 
 	// 金币个数
-	const int COIN_NUM = 20;
+	const int COIN_NUM = 14;
 
 	public void Init()
 	{
@@ -98,7 +98,7 @@ public class CoinMgr : Singleton<CoinMgr>
 		GameObject prefab;
 		GameObject coin;
 		float rate = Random.Range(0.0f, 1.0f);
-		if (rate >= 0.7)
+		if (rate >= 0.85)
 			prefab = bigCoinPrefab;
 		else
 			prefab = smallCoinPrefab;
