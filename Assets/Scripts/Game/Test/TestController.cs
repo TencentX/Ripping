@@ -93,7 +93,8 @@ public class TestController : NetworkBehaviour
 	[SyncVar]
 	private bool inputStop = true;
 	[SyncVar]
-	private bool inputCatch = false;
+	// 0-没有抓人，1-抓到人，2-没有抓到人
+	private int inputCatch = 0;
 	[SyncVar(hook = "OnRun")]
 	private bool inputRun = false;
 	public struct HideInfo
@@ -111,6 +112,7 @@ public class TestController : NetworkBehaviour
 		public float speed;
 		public Vector3 direction;
 		public int clockwise;
+		public float rotateSpeed;
 	}
 	[SyncVar(hook = "OnOffend")]
 	private OffendInfo offendInfo;
@@ -119,6 +121,12 @@ public class TestController : NetworkBehaviour
 
 	// 警戒范围
 	const float WARN_DISTANCE = 14f;
+
+	// 冲撞增加的上限速度
+	const float MAX_OFFEND_SPEED = 16f;
+
+	// 重装增加的上限旋转速度
+	const float MAX_OFFEND_RATATE_SPEED = 60f;
 
 	public static TestController mySelf;
 
@@ -206,7 +214,7 @@ public class TestController : NetworkBehaviour
 			// 被抓
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Caught);
 		}
-		else if (inputCatch)
+		else if (inputCatch != 0)
 		{
 			// 抓人
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
@@ -225,7 +233,7 @@ public class TestController : NetworkBehaviour
 					offendInfo = newInfo;
 					return;
 				}
-				thisTransform.Rotate(Vector3.up * offendInfo.clockwise * Time.deltaTime * offendRotateSpeed);
+				thisTransform.Rotate(Vector3.up * offendInfo.clockwise * Time.deltaTime * offendInfo.rotateSpeed);
 				offendInfo.speed = speed;
 				controller.Move(offendInfo.direction * offendInfo.speed * Time.deltaTime);
 			}
@@ -416,6 +424,13 @@ public class TestController : NetworkBehaviour
 	{
 		if (offendInfo.offend)
 			return;
+		if (inputCatch == 1 && animate.IsPlaying("attack"))
+		{
+			// 如果抓到人，则在抓人动作中途可以切为移动
+			AnimationState state = animate["attack"];
+			if (state.time >= state.length * 10f / 30f)
+				inputCatch = 0;
+		}
 		inputStop = false;
 		inputDir = dir;
 		FaceToDir(inputDir);
@@ -434,20 +449,26 @@ public class TestController : NetworkBehaviour
 			return;
 		if (hideInfo.hide)
 			return;
-		inputCatch = true;
 		stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 		GameObject ripTarget = null;
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, ref ripTarget))
 		{
 			// 抓到了某个人
+			inputCatch = 1;
 			TestController player = ripTarget.GetComponent<TestController>();
 			BeCaught(player);
 		}
 		else if (RipMgr.instance.CheckHit(gameObject, catchDistance, catchDegree, ref ripTarget))
 		{
 			// 碰到了某个人
+			inputCatch = 2;
 			TestController player = ripTarget.GetComponent<TestController>();
 			player.RpcBeHit();
+		}
+		else
+		{
+			// 没有抓到人
+			inputCatch = 2;
 		}
 	}
 
@@ -819,7 +840,7 @@ public class TestController : NetworkBehaviour
 		if (RipMgr.instance.Check(gameObject, catchDistance, catchDegree, hit.gameObject, player.bodyRadius))
 		{
 			// 如果是抓到了某人
-			inputCatch = true;
+			inputCatch = 1;
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Catch);
 			BeCaught(player);
 		}
@@ -828,9 +849,10 @@ public class TestController : NetworkBehaviour
 			// 如果没有抓到，则且处于跑动状态，则进行冲撞
 			OffendInfo info;
 			info.offend = true;
-			info.speed = offendStartSpeed + score * 0.2f;
+			info.speed = offendStartSpeed + Mathf.Min(score * 0.2f, MAX_OFFEND_SPEED);
 			info.direction = thisTransform.forward;
 			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
+			info.rotateSpeed = offendRotateSpeed + Mathf.Min(score * 1f, MAX_OFFEND_RATATE_SPEED);
 			player.offendInfo = info;
 			InjectRun(false);
 			RpcPush();
@@ -965,7 +987,7 @@ public class TestController : NetworkBehaviour
 	{
 		animate.Play("attack");
 		Scheduler.Create(this, (sche, t, s) => {
-			inputCatch = false;
+			inputCatch = 0;
 		}, 0f, 0f, 1f);
 	}
 
@@ -979,7 +1001,7 @@ public class TestController : NetworkBehaviour
 
 	private void EnterOffend()
 	{
-		animate.Play("defend");
+		animate.Play("hurt");
 	}
 
 	private void EnterJump()
