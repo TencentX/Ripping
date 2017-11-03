@@ -123,10 +123,10 @@ public class TestController : NetworkBehaviour
 	const float WARN_DISTANCE = 14f;
 
 	// 冲撞增加的速度的增量值的上限
-	const float MAX_OFFEND_SPEED = 0f;
+	const float MAX_OFFEND_SPEED = 17f;
 
 	// 冲撞增加的旋转速度的增量值的上限
-	const float MAX_OFFEND_RATATE_SPEED = 0f;
+	const float MAX_OFFEND_RATATE_SPEED = 140f;
 
 	public static TestController mySelf;
 
@@ -849,10 +849,10 @@ public class TestController : NetworkBehaviour
 			// 如果没有抓到，则且处于跑动状态，则进行冲撞
 			OffendInfo info;
 			info.offend = true;
-			info.speed = offendStartSpeed + Mathf.Min(score * 0f, MAX_OFFEND_SPEED);
+			info.speed = offendStartSpeed + Mathf.Min(score * 20f, MAX_OFFEND_SPEED);
 			info.direction = thisTransform.forward;
 			info.clockwise = Vector3.Cross(player.thisTransform.position - thisTransform.position, thisTransform.forward).y < 0 ? 1 : -1;
-			info.rotateSpeed = offendRotateSpeed + Mathf.Min(score * 0f, MAX_OFFEND_RATATE_SPEED);
+			info.rotateSpeed = offendRotateSpeed + Mathf.Min(score * 120f, MAX_OFFEND_RATATE_SPEED);
 			player.offendInfo = info;
 			InjectRun(false);
 			RpcPush();
