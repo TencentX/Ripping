@@ -123,10 +123,10 @@ public class TestController : NetworkBehaviour
 	const float WARN_DISTANCE = 14f;
 
 	// 冲撞增加的上限速度
-	const float MAX_OFFEND_SPEED = 20f;
+	const float MAX_OFFEND_SPEED = 10f;
 
 	// 重装增加的上限旋转速度
-	const float MAX_OFFEND_RATATE_SPEED = 760f;
+	const float MAX_OFFEND_RATATE_SPEED = 60f;
 
 	public static TestController mySelf;
 
