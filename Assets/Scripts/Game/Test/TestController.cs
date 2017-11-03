@@ -302,7 +302,7 @@ public class TestController : NetworkBehaviour
 				hudControl.ShowSliderEnergy(showRunEnergy, runEnergy);
 			// 计算视野
 			bool warn = false;
-			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 4, ref targetsInSight, ref targetsOutSight);
+			SightMgr.instance.Check(sightController, sightRange, sightAngle, bodyRadius * 6, ref targetsInSight, ref targetsOutSight);
 			for (int i = 0; i < targetsInSight.Count; i++)
 			{
 				targetsInSight[i].BecameVisible();
