@@ -586,6 +586,7 @@ public class TestController : NetworkBehaviour
 		}
 		if (hideInfo.hide)
 		{
+			controller.enabled = false;
 			stateMachine.SetState(PlayerStateMachine.PlayerState.Jump);
 			Scheduler.Create(this, (sche, t, s) => {
 				if (this.hideInfo.hide)
@@ -597,6 +598,7 @@ public class TestController : NetworkBehaviour
 		}
 		else
 		{
+			controller.enabled = true;
 			model.SetActive(true);
 		}
 		if (!hideInfo.hide && sightController.InSight)
