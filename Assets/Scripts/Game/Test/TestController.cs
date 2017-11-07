@@ -874,11 +874,13 @@ public class TestController : NetworkBehaviour
 		// 别人扣分
 		player.AddScore(-half);
 		player.outputCaught = true;
+		player.controller.enabled = false;
 		Scheduler.Create(this, (sche, t, s) => {
 			// 一段时间后复活玩家
 			player.outputCaught = false;
 			player.transform.position = NetManager.singleton.GetStartPosition().position;
 			player.inputRun = false;
+			player.controller.enabled = true;
 		}, 0f, 0f, RelivePanel.RELIVE_TIME);
 		// 通知所有玩家
 		RpcBeCaught(playerName, player.playerName, score);
