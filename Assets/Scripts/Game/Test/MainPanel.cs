@@ -56,6 +56,8 @@ public class MainPanel : PanelBase
 
 	void Update()
 	{
+		if (RoundMgr.instance == null)
+			return;
 		countDownTime.text = GlobalFunctions.GetFormatTimeString((int)RoundMgr.instance.leftTime);
 	}
 

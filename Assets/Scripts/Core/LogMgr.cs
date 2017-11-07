@@ -80,10 +80,26 @@ public class LogMgr : Singleton<LogMgr>
 #else
         outpath = Application.persistentDataPath + "/outLog.txt";
 #endif
-        if (System.IO.File.Exists (outpath)) { 	//每次启动客户端删除之前保存的Log
-			File.Delete (outpath);
-		}
-		
+		bool error = false;
+		do
+		{
+			if (System.IO.File.Exists(outpath))
+			{
+				try
+				{
+					File.Delete(outpath);
+				}
+				catch (Exception)
+				{
+					error = true;
+					outpath = outpath.Replace("outLog", "outLog~");
+				}
+			}
+			else
+			{
+				error = false;
+			}
+		} while (error);
 
         //Unity5里允许多重监听了，所以真机模式没有必要用BuglyAgent.RegisterLogCallback了
         //unity5以下才用BuglyAgent.RegisterLogCallback
